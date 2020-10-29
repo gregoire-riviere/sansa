@@ -49,14 +49,17 @@ defmodule Sansa.Price.Watcher do
           {
             &1,
             Oanda.Interface.get_prices(@ut, &1, 100)
-          }) |> Enum.filter( fn {p, v} -> @spread_max[p] > hd(Enum.reverse(v))[:spread] end) |>
-
-          Enum.each(fn {p, v} ->
+          }) |> Enum.each(fn {p, v} ->
             cond do
+              @spread_max[p] > hd(Enum.reverse(v))[:spread] ->
+                Slack.Communcation.send_message("#suivi", "Spread too damn high for #{p}")
+                Logger.info("Spread too high")
               Sansa.Patterns.check_pattern(:shooting_star, v, Sansa.ZonePuller.get_zones(p)) ->
                 Slack.Communcation.send_message("#suivi", "New shooting star on zone on #{p}")
                 Logger.info("Waou! A shooting star")
-              true -> Logger.info("No entry reason :(")
+              true ->
+                Slack.Communcation.send_message("#suivi", "No entry reason on #{p}")
+                Logger.info("No entry reason :(")
             end
           end)
       else
