@@ -51,7 +51,7 @@ defmodule Sansa.Price.Watcher do
             Oanda.Interface.get_prices(@ut, &1, 100)
           }) |> Enum.each(fn {p, v} ->
             cond do
-              @spread_max[p] > hd(Enum.reverse(v))[:spread] ->
+              @spread_max[p] <= hd(Enum.reverse(v))[:spread] ->
                 Slack.Communcation.send_message("#suivi", "Spread too damn high for #{p}")
                 Logger.info("Spread too high")
               Sansa.Patterns.check_pattern(:shooting_star, v, Sansa.ZonePuller.get_zones(p)) ->
