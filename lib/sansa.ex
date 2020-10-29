@@ -3,7 +3,8 @@ defmodule Sansa do
 
   def start(_type, _args) do
     children = [
-      {Sansa.ZonePuller, []}
+      {Sansa.ZonePuller, []},
+      {Sansa.Price.Watcher, []}
     ]
 
     {:ok, _pid} = Supervisor.start_link(children, strategy: :one_for_one, name: __MODULE__)

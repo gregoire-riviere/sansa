@@ -23,7 +23,8 @@ defmodule Sansa.MixProject do
   defp deps do
     [
       {:poison, "~> 3.0", override: true},
-      {:logger_file_backend, "~> 0.0.10"}
+      {:logger_file_backend, "~> 0.0.10"},
+      {:timex, "~> 3.5"}
     ]
   end
 end
