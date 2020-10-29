@@ -51,18 +51,18 @@ defmodule Oanda.Interface do
   end
 
   #For compatibility with backtest version
-  def create_order(commande, _, _, paire), do: create_order(commande, paire)
-  def create_order(commande, paire) do
-      url = 'https://api-fxpractice.oanda.com/v3/accounts/#{account_id()}/orders'
-      commande = '#{Poison.encode!(commande)}'
-      {:ok,{{_,code,_},_,res}} = :httpc.request(:post,{url, main_header(), 'application/json', commande},[recv_timeout: 300_000, connect_timeout: 300_000], [])
-      Logger.debug("#{commande}")
-      if code < 200 or code >=300 do
-          Slack.Communcation.send_message("#debug", "Something strange happened while passing an order : got code #{code}. You may find the reason here : #{res}")
-      else
-          Slack.Communcation.send_message("#debug", "Nouvel ordre passe sur #{paire}")
-      end
-  end
+  # def create_order(commande, _, _, paire), do: create_order(commande, paire)
+  # def create_order(commande, paire) do
+  #     url = 'https://api-fxpractice.oanda.com/v3/accounts/#{account_id()}/orders'
+  #     commande = '#{Poison.encode!(commande)}'
+  #     {:ok,{{_,code,_},_,res}} = :httpc.request(:post,{url, main_header(), 'application/json', commande},[recv_timeout: 300_000, connect_timeout: 300_000], [])
+  #     Logger.debug("#{commande}")
+  #     if code < 200 or code >=300 do
+  #         Slack.Communcation.send_message("#debug", "Something strange happened while passing an order : got code #{code}. You may find the reason here : #{res}")
+  #     else
+  #         Slack.Communcation.send_message("#debug", "Nouvel ordre passe sur #{paire}")
+  #     end
+  # end
 
   def get_current_positions() do
 
