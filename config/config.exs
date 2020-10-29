@@ -62,7 +62,7 @@
           },
           rrp: 1.3,
           risque: 0.015,
-          paires: ["EUR_USD", "CAD_CHF"]
+          paires: ["EUR_USD", "CAD_CHF", "GBP_AUD"]
           # paires: [
           #     {"NZD_JPY", :tcsc_strat},
           #     {"USD_JPY", :tcsc_strat}
