@@ -7,7 +7,7 @@ defmodule Oanda.Interface do
   def account_id(), do: File.read!(Application.get_env(:sansa, :oanda)[:account_id_file]) |> String.trim_trailing("\n")
 
   def main_header() do
-      token = Application.get_env(:sansa, :oanda)[:token_file] |> File.read!
+      token = Application.get_env(:sansa, :oanda)[:token_file] |> File.read! |> String.trim_trailing("\n")
       [{'Authorization', '#{token}'}, {'Accept-Datetime-Format', 'UNIX'}]
   end
 
@@ -17,9 +17,10 @@ defmodule Oanda.Interface do
       ts_to = if ts_to == 0, do: "", else: "&to=#{ts_to}"
       ts_from = if ts_from == 0, do: "", else: "&from=#{ts_from}"
       url = 'https://api-fxpractice.oanda.com/v3/instruments/#{actif}/candles?count=#{nb_candles+1}&price=MAB&granularity=#{ut}#{ts_to}#{ts_from}'
-      Logger.debug("#{url}")
+      Logger.debug("#{inspect main_header()}")
       case :httpc.request(:get,{url, main_header()},[recv_timeout: 60_000, connect_timeout: 60_000], []) do
       {:ok,{{_,200,_},_,res}}->
+          Logger.debug(res)
           Poison.decode!(res) |> clean_prices(actif)
       end
   end

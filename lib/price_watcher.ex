@@ -4,6 +4,7 @@ defmodule Sansa.Price.Watcher do
 
   @ut "H1"
   @paires Application.get_env(:sansa, :trading)[:paires]
+  @spread_max Application.get_env(:sansa, :trading)[:spread_max]
 
   def start_link(opts) do
       GenServer.start_link(__MODULE__, :ok, name: __MODULE__)
@@ -48,7 +49,16 @@ defmodule Sansa.Price.Watcher do
           {
             &1,
             Oanda.Interface.get_prices(@ut, &1, 100)
-          }) |> Enum.each(&IO.inspect/1)
+          }) |> Enum.filter( fn {p, v} -> @spread_max[p] > hd(Enum.reverse(v))[:spread] end) |>
+
+          Enum.each(fn {p, v} ->
+            cond do
+              Sansa.Patterns.check_pattern(:shooting_star, v, Sansa.ZonePuller.get_zones(p)) ->
+                Slack.Communcation.send_message("#suivi", "New shooting star on zone on #{p}")
+                Logger.info("Waou! A shooting star")
+              true -> Logger.info("No entry reason :(")
+            end
+          end)
       else
           Logger.debug("Pull not available")
       end

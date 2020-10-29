@@ -27,8 +27,8 @@ defmodule Sansa.ZonePuller do
     new_tbl = :ets.new(:zones, [])
     if File.exists?(@file_path) do
       File.read!(@file_path) |>
-        Poison.decode!() |>
-        Enum.each(fn {k, v} -> :ets.insert(new_tbl, {k, v}) end)
+        Poison.decode!(keys: :atoms) |>
+        Enum.each(fn {k, v} -> :ets.insert(new_tbl, {to_string(k), v}) end)
     end
     new_tbl
   end

@@ -12,3 +12,14 @@ __TODO:__
 * implémenter les pattern de prise de position
 * implémenter le module de prise de décision
 * ajouter un reporting sur slack
+
+---
+
+### Zones format :
+```
+{
+    h: [borne haute],
+    l: [borne basse],
+    bias: [buy ou sell - facultatif]
+}
+```
