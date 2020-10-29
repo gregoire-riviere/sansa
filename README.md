@@ -1,21 +1,14 @@
 # Sansa
 
-**TODO: Add description**
+This is a fork from a previous project.
+*The goal*: Build a trading bot based on identified daily zones and pass orders on lower timeframes (H1 mainly).
 
-## Installation
+__What's done:__
+* puller des zones pour le moment remplies à la main
+* connecteur oanda (repris de l'ancien projet)
 
-If [available in Hex](https://hex.pm/docs/publish), the package can be installed
-by adding `sansa` to your list of dependencies in `mix.exs`:
-
-```elixir
-def deps do
-  [
-    {:sansa, "~> 0.1.0"}
-  ]
-end
-```
-
-Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
-and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
-be found at [https://hexdocs.pm/sansa](https://hexdocs.pm/sansa).
-
+__TODO:__
+* ajouter un price watcher qui pull à intervalles réguliers
+* implémenter les pattern de prise de position
+* implémenter le module de prise de décision
+* ajouter un reporting sur slack

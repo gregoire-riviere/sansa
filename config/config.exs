@@ -62,20 +62,10 @@
           },
           rrp: 1.3,
           risque: 0.015,
-          paires: [
-              {"NZD_JPY", :tcsc_strat},
-              {"USD_JPY", :tcsc_strat}
-          ]
-      ],
-      backtest: [
-          backtest_mode: true,
-          step_for_ut: %{
-              "H1"=> 3600,
-              "H4"=> 3600*4
-          },
-          start_ts: 1491908811,
-          # stop_ts: 1546297200,
-          paires: ["AUD_USD", "NZD_USD", "EUR_JPY", "NZD_JPY", "AUD_CHF", "GBP_CAD", "AUD_JPY", "EUR_CHF", "GBP_AUD", "NZD_CAD", "EUR_USD", "CAD_CHF", "USD_JPY", "GBP_USD", "USD_CHF", "USD_CAD"]
+          # paires: [
+          #     {"NZD_JPY", :tcsc_strat},
+          #     {"USD_JPY", :tcsc_strat}
+          # ]
       ]
   ],
   logger: [
