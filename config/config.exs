@@ -22,7 +22,11 @@
               "USD_CAD" => 0.065,
               "AUD_USD" => 0.091,
               "NZD_USD" => 0.091,
-
+              "EUR_AUD" => 0.06,
+              "EUR_GBP" => 0.11,
+              "GBP_CHF" => 0.093,
+              "GBP_JPY" => 0.082,
+              "USD_JPY" => 0.082
           },
           position_pip: %{
               "AUD_JPY" => 0.01,
@@ -41,9 +45,14 @@
               "USD_CAD" => 0.0001,
               "AUD_USD" => 0.0001,
               "NZD_USD" => 0.0001,
+              "EUR_AUD" => 0.0001,
+              "EUR_GBP" => 0.0001,
+              "GBP_CHF" => 0.0001,
+              "GBP_JPY" => 0.01,
+              "USD_JPY" => 0.01
           },
           spread_max: %{
-              "AUD_JPY" => 2.0,
+              "AUD_JPY" => 1.8,
               "EUR_CHF" => 2.0,
               "GBP_AUD" => 4.2,
               "NZD_CAD" => 2.9,
@@ -57,8 +66,14 @@
               "AUD_CHF" => 2.6,
               "GBP_CAD" => 4.2,
               "USD_CAD" => 2.0,
-              "AUD_USD" => 3.0,
-              "NZD_USD" => 3.3,
+              "AUD_USD" => 1.8,
+              "NZD_USD" => 2.5,
+              "EUR_AUD" => 3.1,
+              "EUR_GBP" => 2.5,
+              "GBP_CHF" => 2.8,
+              "GBP_JPY" => 3.0,
+              "USD_JPY" => 1.5
+
           },
           rrp: 1.3,
           risque: 0.015,
