@@ -42,6 +42,20 @@ defmodule Sansa.Price.Watcher do
       Date.day_of_week(Timex.today) != 7
   end
 
+  def test_loop(p, ts) do
+    v = Oanda.Interface.get_prices(@ut, p, 100, %{ts_to: ts}) |> Sansa.TradingUtils.atr
+    cond do
+      @spread_max[p] <= hd(Enum.reverse(v))[:spread] ->
+        Logger.info("Spread too high")
+      Sansa.Patterns.check_pattern(:shooting_star, v, Sansa.ZonePuller.get_zones(p)) ->
+        Logger.info("Waou! A shooting star")
+      Sansa.Patterns.check_pattern(:engulfing, v, Sansa.ZonePuller.get_zones(p)) ->
+        Logger.info("Waou! An engulfing pattern")
+      true ->
+        # Logger.info("No entry reason :(")
+    end
+  end
+
   ## main loop
   def handle_info(:tick, _s) do
       Logger.info("New price check!")

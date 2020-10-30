@@ -29,14 +29,14 @@ defmodule Sansa.Patterns do
           last_price[:low] < zone[:h] &&
           bot_wick >= 2*corps_candle &&
           corps_candle <= last_price[:atr] &&
-          top_wick <= corps_candle &&
+          top_wick <= 0.5*bot_wick &&
           abs(last_price[:open] - last_price[:close]) < 2.5 * last_price[:atr]
         "sell" ->
           min_o_c < zone[:h] &&
           last_price[:high] > zone[:l] &&
           top_wick >= 2*corps_candle &&
           corps_candle <= last_price[:atr] &&
-          bot_wick <= corps_candle &&
+          bot_wick <= 0.5*top_wick &&
           abs(last_price[:open] - last_price[:close]) < 2.5 * last_price[:atr]
         _ ->
           (
@@ -44,14 +44,14 @@ defmodule Sansa.Patterns do
             last_price[:low] < zone[:h] &&
             bot_wick >= 2*corps_candle &&
             corps_candle <= last_price[:atr] &&
-            top_wick <= corps_candle &&
+            top_wick <= 0.5*bot_wick &&
             abs(last_price[:open] - last_price[:close]) < 2.5 * last_price[:atr]
           ) || (
             min_o_c < zone[:h] &&
             last_price[:high] > zone[:l] &&
             top_wick >= 2*corps_candle &&
             corps_candle <= last_price[:atr] &&
-            bot_wick <= corps_candle &&
+            bot_wick <= 0.5*top_wick &&
             abs(last_price[:open] - last_price[:close]) < 2.5 * last_price[:atr]
           )
       end
@@ -66,8 +66,6 @@ defmodule Sansa.Patterns do
   def check_pattern(:engulfing, prices, zones) do
     candle_2 = prices |> Enum.reverse |> hd
     candle_1 = prices |> Enum.reverse |> Enum.at(1)
-    IO.inspect(candle_1)
-    IO.inspect(candle_2)
     Enum.reduce(zones, false, fn zone, acc ->
       corps_candle = abs(candle_2[:open] - candle_2[:close])
       min_o_c = Enum.min([candle_2[:close], candle_2[:open]])
