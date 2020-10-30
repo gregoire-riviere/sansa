@@ -44,5 +44,18 @@ defmodule Sansa.ZonePuller do
     {:reply, res, state}
   end
 
+  def lock_zone(p, zone), do: GenServer.cast(Sansa.ZonePuller, {:lock_zone, p, zone})
+  def handle_cast({:lock_zone, p, zone}, state) do
+    content = File.read!(@file_path) |> Poison.decode!
+    paire_zones = if content[p], do: content[p], else: nil
+    content = if paire_zones do
+      content |> put_in([p],
+        paire_zones |> Enum.map(& if &1["h"] == zone.h && &1["l"] == zone.l, do: put_in(&1, [:locked], true), else: &1)
+      )
+    else content end
+    File.write!(@file_path, Poison.encode!(content))
+    s = refresh_zones(state)
+    {:noreply, s}
+  end
 
 end
