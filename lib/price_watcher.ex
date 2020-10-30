@@ -44,11 +44,12 @@ defmodule Sansa.Price.Watcher do
 
   ## main loop
   def handle_info(:tick, _s) do
+      Logger.info("New price check!")
       if is_pull_authorized() do
           @paires |> Enum.map(&
           {
             &1,
-            Oanda.Interface.get_prices(@ut, &1, 100)
+            Oanda.Interface.get_prices(@ut, &1, 100) |> Sansa.TradingUtils.atr
           }) |> Enum.each(fn {p, v} ->
             cond do
               @spread_max[p] <= hd(Enum.reverse(v))[:spread] ->
@@ -57,6 +58,9 @@ defmodule Sansa.Price.Watcher do
               Sansa.Patterns.check_pattern(:shooting_star, v, Sansa.ZonePuller.get_zones(p)) ->
                 Slack.Communcation.send_message("#suivi", "New shooting star on zone on #{p}")
                 Logger.info("Waou! A shooting star")
+              Sansa.Patterns.check_pattern(:engulfing, v, Sansa.ZonePuller.get_zones(p)) ->
+                Slack.Communcation.send_message("#suivi", "New engulfing star on zone on #{p}")
+                Logger.info("Waou! An engulfing pattern")
               true ->
                 Slack.Communcation.send_message("#suivi", "No entry reason on #{p}")
                 Logger.info("No entry reason :(")
