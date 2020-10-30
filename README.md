@@ -6,12 +6,16 @@ This is a fork from a previous project.
 __What's done:__
 * puller des zones pour le moment remplies à la main
 * connecteur oanda (repris de l'ancien projet)
-
-__TODO:__
 * ajouter un price watcher qui pull à intervalles réguliers
 * implémenter les pattern de prise de position
-* implémenter le module de prise de décision
 * ajouter un reporting sur slack
+
+__TODO:__
+
+* implémenter le module de prise de position
+* conception du pattern double top?
+* more tests
+
 
 ---
 
@@ -23,3 +27,14 @@ __TODO:__
     bias: [buy ou sell - facultatif]
 }
 ```
+
+### Price format
+```
+{
+    open: ...
+    close: ...
+    high: ...
+    low: ...
+    spread: ...
+    time: ... (unix ts)
+}
