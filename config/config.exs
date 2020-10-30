@@ -12,7 +12,6 @@
               "NZD_CAD" => 0.068,
               "CAD_CHF" => 0.094,
               "EUR_USD" => 0.091,
-              "USD_JPY" => 0.087,
               "GBP_USD" => 0.091,
               "USD_CHF" => 0.094,
               "EUR_JPY" => 0.084,
@@ -48,8 +47,7 @@
               "EUR_AUD" => 0.0001,
               "EUR_GBP" => 0.0001,
               "GBP_CHF" => 0.0001,
-              "GBP_JPY" => 0.01,
-              "USD_JPY" => 0.01
+              "GBP_JPY" => 0.01
           },
           spread_max: %{
               "AUD_JPY" => 1.8,
@@ -58,7 +56,6 @@
               "NZD_CAD" => 2.9,
               "CAD_CHF" => 2.8,
               "EUR_USD" => 1.5,
-              "USD_JPY" => 1.5,
               "GBP_USD" => 2.0,
               "USD_CHF" => 2.0,
               "EUR_JPY" => 2.0,
