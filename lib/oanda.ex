@@ -64,25 +64,27 @@ defmodule Oanda.Interface do
   end
 
   def get_current_positions() do
-      # Requesting orders and positions
+
+      # requesting orders and positions
       url = 'https://api-fxpractice.oanda.com/v3/accounts/#{account_id()}/pendingOrders'
       {:ok,{{_,200,_},_,res}} = :httpc.request(:get,{url, main_header()},[recv_timeout: 300_000, connect_timeout: 300_000], [])
       orders = res |> Poison.decode! |> get_in(["orders"])
       url = 'https://api-fxpractice.oanda.com/v3/accounts/#{account_id()}/openPositions'
       {:ok,{{_,200,_},_,res}} = :httpc.request(:get,{url, main_header()},[recv_timeout: 300_000, connect_timeout: 300_000], [])
 
-      # Processing
+      # processing
       res |> Poison.decode! |> get_in(["positions"]) |> Enum.map(fn p->
           trade_id = p["long"]["tradeIDs"] || p["short"]["tradeIDs"]
           open_price = p["long"]["averagePrice"] || p["short"]["averagePrice"]
           sens = p["long"]["tradeIDs"] && :buy || :sell
           trade_id |> Enum.map(fn t_id ->
               order_sl = orders |> Enum.filter(& &1["tradeID"] == t_id && &1["type"] == "STOP_LOSS") |> hd
-              order_tp = orders |> Enum.filter(& &1["tradeID"] == t_id && &1["type"] == "TAKE_PROFIT") |> hd
+              # order_tp = orders |> Enum.filter(& &1["tradeID"] == t_id && &1["type"] == "TAKE_PROFIT") |> hd
+              Logger.debug("#{inspect order_sl}")
               %{
                   paire: p["instrument"],
                   sl: order_sl["price"] |> Float.parse |> elem(0),
-                  tp: order_tp["price"] |> Float.parse |> elem(0),
+                  # tp: order_tp["price"] |> Float.parse |> elem(0),
                   open_price: open_price |> Float.parse |> elem(0),
                   sl_tid: order_sl["id"],
                   sens: sens
