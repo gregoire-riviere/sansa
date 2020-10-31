@@ -24,7 +24,7 @@ defmodule Sansa.Orders do
     cond do
       Oanda.Interface.still_pending(paire) ->
         Slack.Communcation.send_message("#debug", "Ordre toujours en cours pour #{paire}")
-      length(Oanda.get_current_positions()) >= @max_number_position ->
+      length(Oanda.Interface.get_current_positions()) >= @max_number_position ->
         Slack.Communcation.send_message("#debug", "Trop de positions ouvertes pour le moment")
       true ->
         current = Enum.reverse(prices) |> hd
