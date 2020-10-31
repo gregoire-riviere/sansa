@@ -55,6 +55,7 @@ defmodule Oanda.Interface do
       url = 'https://api-fxpractice.oanda.com/v3/accounts/#{account_id()}/orders'
       commande = '#{Poison.encode!(commande)}'
       {:ok,{{_,code,_},_,res}} = :httpc.request(:post,{url, main_header(), 'application/json', commande},[recv_timeout: 300_000, connect_timeout: 300_000], [])
+      Logger.debug(res)
       if code < 200 or code >=300 do
           Slack.Communcation.send_message("#orders_passed", "Something strange happened while passing an order : got code #{code}. You may find the reason here : #{res}")
       else

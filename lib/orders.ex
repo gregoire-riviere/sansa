@@ -2,7 +2,7 @@ defmodule Sansa.Orders do
   use GenServer
   require Logger
 
-  @atr_stop_ratio 2
+  @atr_stop_ratio 2.5
   @spread_max Application.get_env(:sansa, :trading)[:spread_max]
   @position_pip Application.get_env(:sansa, :trading)[:position_pip]
   @taille_pour_mille Application.get_env(:sansa, :trading)[:taille_pour_mille]
@@ -18,6 +18,7 @@ defmodule Sansa.Orders do
     {:ok, nil}
   end
 
+  def new_order(paire, prices, sens), do: GenServer.cast(Sansa.Orders, {:new_order, paire, prices, sens})
   def handle_cast({:new_order, paire, prices, sens}, _) do
     if Oanda.Interface.still_pending(paire) do
       Slack.Communcation.send_message("#debug", "Ordre toujours en cours pour #{paire}")
@@ -31,6 +32,7 @@ defmodule Sansa.Orders do
       risque_max_euros = Float.round(@risque * Oanda.Interface.get_capital(), 2)
       stop_pip = stop_distance / @position_pip[paire]
       risque_pour_mille = @taille_pour_mille[paire] * stop_pip
+      Logger.debug(risque_pour_mille)
       volume = trunc(Float.round(risque_max_euros*1000/risque_pour_mille))
       volume = if sens == :buy, do: volume, else: -volume
       commande = %{
@@ -52,6 +54,7 @@ defmodule Sansa.Orders do
       Slack.Communcation.send_message("#orders_passed", "Nouvel order pour #{paire} : #{inspect commande}")
       Oanda.Interface.create_order(commande, current, sens, paire)
     end
+    {:noreply, nil}
   end
 
 end

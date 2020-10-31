@@ -12,3 +12,5 @@ start_ts = 1600071589
   IO.inspect(t |> DateTime.from_unix!(:seconds))
   Sansa.Price.Watcher.test_loop("EUR_USD", t)
 end)
+
+Sansa.Orders.new_order("EUR_USD", Oanda.Interface.get_prices("H1", "EUR_USD", 100) |> Sansa.TradingUtils.atr, :buy)

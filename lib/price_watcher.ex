@@ -6,6 +6,7 @@ defmodule Sansa.Price.Watcher do
   @paires Application.get_env(:sansa, :trading)[:paires]
   @spread_max Application.get_env(:sansa, :trading)[:spread_max]
   @pattern_activated [:shooting_star, :engulfing]
+  @orders_activated true
 
   def start_link(_) do
       GenServer.start_link(__MODULE__, :ok, name: __MODULE__)
@@ -51,19 +52,16 @@ defmodule Sansa.Price.Watcher do
       action = @pattern_activated |> Enum.map(& {&1, Sansa.Patterns.run_pattern_detection(&1, v, Sansa.ZonePuller.get_zones(p))})
       |> Enum.reduce_while(:no_trade, fn a, acc ->
         case a do
-          {pat, {:ok, :buy}} ->
-            Logger.info("New buy on #{to_string pat} pattern on zone on #{p}")
-            {:halt, :ok}
-          {pat, {:ok, :sell}} ->
-            Logger.info("New sell on #{to_string pat} pattern on zone on #{p}")
+          {pat, {:ok, sens}} ->
+            Logger.info("New #{to_string sens} on #{to_string pat} pattern on zone on #{p}")
+            @orders_activated && Sansa.Orders.new_order(p, v, sens)
             {:halt, :ok}
           _ -> {:cont, acc}
         end
       end)
-      # if action == :no_trade do
-      #   Slack.Communcation.send_message("#suivi", "No entry reason on #{p}")
-      #   Logger.info("No entry reason :(")
-      # end
+      if action == :no_trade do
+        Logger.info("No entry reason :(")
+      end
     end
   end
 
@@ -83,13 +81,10 @@ defmodule Sansa.Price.Watcher do
               action = @pattern_activated |> Enum.map(& {&1, Sansa.Patterns.run_pattern_detection(&1, v, Sansa.ZonePuller.get_zones(p))})
               |> Enum.reduce_while(:no_trade, fn a, acc ->
                 case a do
-                  {pat, {:ok, :buy}} ->
-                    Slack.Communcation.send_message("#suivi", "New buy on #{to_string pat} pattern on zone on #{p}")
-                    Logger.info("New buy on #{to_string pat} pattern on zone on #{p}")
-                    {:halt, :ok}
-                  {pat, {:ok, :sell}} ->
-                    Slack.Communcation.send_message("#suivi", "New sell on #{to_string pat} pattern on zone on #{p}")
-                    Logger.info("New sell on #{to_string pat} pattern on zone on #{p}")
+                  {pat, {:ok, sens}} ->
+                    Slack.Communcation.send_message("#suivi", "New #{to_string sens} on #{to_string pat} pattern on zone on #{p}")
+                    Logger.info("New #{to_string sens} on #{to_string pat} pattern on zone on #{p}")
+                    @orders_activated && Sansa.Orders.new_order(p, v, sens)
                     {:halt, :ok}
                   _ -> {:cont, acc}
                 end
