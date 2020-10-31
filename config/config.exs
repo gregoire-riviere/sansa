@@ -146,3 +146,19 @@
       ]
   ]
 ]
+# "USD_CAD",
+#     "AUD_USD",
+#     "NZD_USD",
+#     "EUR_AUD",
+#     "EUR_GBP",
+#     "GBP_CHF",
+#     "GBP_JPY",
+#     "USD_JPY",
+#     "AUD_NZD",
+#     "AUD_CAD",
+#     "CHF_JPY",
+#     "CAD_JPY",
+#     "EUR_NZD",
+#     "EUR_CAD",
+#     "GBP_NZD",
+#     "NZD_CHF"
