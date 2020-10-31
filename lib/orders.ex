@@ -20,7 +20,7 @@ defmodule Sansa.Orders do
   end
 
   def new_order(paire, prices, sens), do: GenServer.cast(Sansa.Orders, {:new_order, paire, prices, sens})
-  def handle_cast({:new_order, paire, prices, sens}, Ordre toujours en cours_) do
+  def handle_cast({:new_order, paire, prices, sens}, _) do
     cond do
       Oanda.Interface.still_pending(paire) ->
         Slack.Communcation.send_message("#debug", "Ordre toujours en cours pour #{paire}")
