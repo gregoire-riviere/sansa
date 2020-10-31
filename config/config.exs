@@ -25,7 +25,15 @@
               "EUR_GBP" => 0.11,
               "GBP_CHF" => 0.093,
               "GBP_JPY" => 0.082,
-              "USD_JPY" => 0.082
+              "USD_JPY" => 0.082,
+              "AUD_NZD" => 0.056,
+              "AUD_CAD" => 0.064,
+              "CHF_JPY" => 0.082,
+              "CAD_JPY" => 0.082,
+              "EUR_NZD" => 0.056,
+              "EUR_CAD" => 0.064,
+              "GBP_NZD" => 0.056,
+              "NZD_CHF" => 0.093
           },
           position_pip: %{
               "AUD_JPY" => 0.01,
@@ -47,7 +55,15 @@
               "EUR_AUD" => 0.0001,
               "EUR_GBP" => 0.0001,
               "GBP_CHF" => 0.0001,
-              "GBP_JPY" => 0.01
+              "GBP_JPY" => 0.01,
+              "AUD_NZD" => 0.0001,
+              "AUD_CAD" => 0.0001,
+              "CHF_JPY" => 0.01,
+              "CAD_JPY" => 0.01,
+              "EUR_NZD" => 0.0001,
+              "EUR_CAD" => 0.0001,
+              "GBP_NZD" => 0.0001,
+              "NZD_CHF" => 0.0001
           },
           spread_max: %{
               "AUD_JPY" => 1.8,
@@ -69,12 +85,49 @@
               "EUR_GBP" => 2.5,
               "GBP_CHF" => 2.8,
               "GBP_JPY" => 3.0,
-              "USD_JPY" => 1.5
+              "USD_JPY" => 1.5,
+              "AUD_NZD" => 3.0,
+              "AUD_CAD" => 2.5,
+              "CHF_JPY" => 2.7,
+              "CAD_JPY" => 2.0,
+              "EUR_NZD" => 3.4,
+              "EUR_CAD" => 2.5,
+              "GBP_NZD" => 4.5,
+              "NZD_CHF" => 2.7
 
           },
           rrp: 1.3,
           risque: 0.015,
-          paires: ["EUR_USD", "CAD_CHF", "GBP_AUD", "NZD_JPY", "USD_CHF"]
+          paires: [
+            "AUD_JPY",
+            "EUR_CHF",
+            "GBP_AUD",
+            "NZD_CAD",
+            "CAD_CHF",
+            "EUR_USD",
+            "GBP_USD",
+            "USD_CHF",
+            "EUR_JPY",
+            "NZD_JPY",
+            "AUD_CHF",
+            "GBP_CAD",
+            "USD_CAD",
+            "AUD_USD",
+            "NZD_USD",
+            "EUR_AUD",
+            "EUR_GBP",
+            "GBP_CHF",
+            "GBP_JPY",
+            "USD_JPY",
+            "AUD_NZD",
+            "AUD_CAD",
+            "CHF_JPY",
+            "CAD_JPY",
+            "EUR_NZD",
+            "EUR_CAD",
+            "GBP_NZD",
+            "NZD_CHF"
+            ]
           # paires: [
           #     {"NZD_JPY", :tcsc_strat},
           #     {"USD_JPY", :tcsc_strat}
