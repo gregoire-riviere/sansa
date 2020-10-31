@@ -36,10 +36,10 @@ defmodule Sansa.ZonePuller do
   def get_zones(p), do: GenServer.call(Sansa.ZonePuller, {:get_zones, p})
   def handle_call({:get_zones, p}, _from, state) do
     res = case :ets.lookup(state, p) do
-      [] -> :not_found
+      [] -> []
       [{_, v}] -> v
       [{_, v}|_] -> v
-      _ -> :not_found
+      _ -> []
     end
     {:reply, res, state}
   end
