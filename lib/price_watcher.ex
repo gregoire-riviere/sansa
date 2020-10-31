@@ -5,8 +5,9 @@ defmodule Sansa.Price.Watcher do
   @ut "H1"
   @paires Application.get_env(:sansa, :trading)[:paires]
   @spread_max Application.get_env(:sansa, :trading)[:spread_max]
+  @pattern_activated [:shooting_star, :engulfing]
 
-  def start_link(opts) do
+  def start_link(_) do
       GenServer.start_link(__MODULE__, :ok, name: __MODULE__)
   end
 
@@ -44,15 +45,25 @@ defmodule Sansa.Price.Watcher do
 
   def test_loop(p, ts) do
     v = Oanda.Interface.get_prices(@ut, p, 100, %{ts_to: ts}) |> Sansa.TradingUtils.atr
-    cond do
-      @spread_max[p] <= hd(Enum.reverse(v))[:spread] ->
-        Logger.info("Spread too high")
-      Sansa.Patterns.check_pattern(:shooting_star, v, Sansa.ZonePuller.get_zones(p)) ->
-        Logger.info("Waou! A shooting star")
-      Sansa.Patterns.check_pattern(:engulfing, v, Sansa.ZonePuller.get_zones(p)) ->
-        Logger.info("Waou! An engulfing pattern")
-      true ->
-        # Logger.info("No entry reason :(")
+    if @spread_max[p] <= hd(Enum.reverse(v))[:spread] && false do
+      Logger.info("Spread too high")
+    else
+      action = @pattern_activated |> Enum.map(& {&1, Sansa.Patterns.run_pattern_detection(&1, v, Sansa.ZonePuller.get_zones(p))})
+      |> Enum.reduce_while(:no_trade, fn a, acc ->
+        case a do
+          {pat, {:ok, :buy}} ->
+            Logger.info("New buy on #{to_string pat} pattern on zone on #{p}")
+            {:halt, :ok}
+          {pat, {:ok, :sell}} ->
+            Logger.info("New sell on #{to_string pat} pattern on zone on #{p}")
+            {:halt, :ok}
+          _ -> {:cont, acc}
+        end
+      end)
+      # if action == :no_trade do
+      #   Slack.Communcation.send_message("#suivi", "No entry reason on #{p}")
+      #   Logger.info("No entry reason :(")
+      # end
     end
   end
 
@@ -65,19 +76,28 @@ defmodule Sansa.Price.Watcher do
             &1,
             Oanda.Interface.get_prices(@ut, &1, 100) |> Sansa.TradingUtils.atr
           }) |> Enum.each(fn {p, v} ->
-            cond do
-              @spread_max[p] <= hd(Enum.reverse(v))[:spread] ->
+            if @spread_max[p] <= hd(Enum.reverse(v))[:spread] && false do
                 Slack.Communcation.send_message("#suivi", "Spread too damn high for #{p}")
                 Logger.info("Spread too high")
-              Sansa.Patterns.check_pattern(:shooting_star, v, Sansa.ZonePuller.get_zones(p)) ->
-                Slack.Communcation.send_message("#suivi", "New shooting star on zone on #{p}")
-                Logger.info("Waou! A shooting star")
-              Sansa.Patterns.check_pattern(:engulfing, v, Sansa.ZonePuller.get_zones(p)) ->
-                Slack.Communcation.send_message("#suivi", "New engulfing star on zone on #{p}")
-                Logger.info("Waou! An engulfing pattern")
-              true ->
+            else
+              action = @pattern_activated |> Enum.map(& {&1, Sansa.Patterns.run_pattern_detection(&1, v, Sansa.ZonePuller.get_zones(p))})
+              |> Enum.reduce_while(:no_trade, fn a, acc ->
+                case a do
+                  {pat, {:ok, :buy}} ->
+                    Slack.Communcation.send_message("#suivi", "New buy on #{to_string pat} pattern on zone on #{p}")
+                    Logger.info("New buy on #{to_string pat} pattern on zone on #{p}")
+                    {:halt, :ok}
+                  {pat, {:ok, :sell}} ->
+                    Slack.Communcation.send_message("#suivi", "New sell on #{to_string pat} pattern on zone on #{p}")
+                    Logger.info("New sell on #{to_string pat} pattern on zone on #{p}")
+                    {:halt, :ok}
+                  _ -> {:cont, acc}
+                end
+              end)
+              if action == :no_trade do
                 Slack.Communcation.send_message("#suivi", "No entry reason on #{p}")
                 Logger.info("No entry reason :(")
+              end
             end
           end)
       else
