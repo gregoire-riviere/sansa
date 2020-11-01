@@ -41,7 +41,9 @@ defmodule Sansa.Price.Watcher do
   end
 
   def is_pull_authorized() do
-      Date.day_of_week(Timex.today) != 7
+      Date.day_of_week(Timex.today) != 7 &&
+      Date.day_of_week(Timex.today) != 6 &&
+      !(Date.day_of_week(Timex.today) == 5 && Timex.now("Europe/Paris").hour >= 18)
   end
 
   def test_loop(p, ts) do
