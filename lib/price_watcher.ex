@@ -92,7 +92,6 @@ defmodule Sansa.Price.Watcher do
                 end
               end)
               if action == :no_trade do
-                Slack.Communcation.send_message("#suivi", "No entry reason on #{p}")
                 Logger.info("No entry reason :(")
               end
             end
