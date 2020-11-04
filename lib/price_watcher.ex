@@ -71,7 +71,7 @@ defmodule Sansa.Price.Watcher do
   def handle_info(:tick, _s) do
       Logger.info("New price check!")
       if is_pull_authorized() do
-          @paires |> Enum.map(&
+          @paires |> Enum.shuffle |> Enum.map(&
           {
             &1,
             Oanda.Interface.get_prices(@ut, &1, 100) |> Sansa.TradingUtils.atr
