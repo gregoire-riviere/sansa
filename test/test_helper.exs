@@ -14,3 +14,5 @@ start_ts = 1600071589
 end)
 
 Sansa.Orders.new_order("EUR_USD", Oanda.Interface.get_prices("H1", "EUR_USD", 100) |> Sansa.TradingUtils.atr, :buy)
+
+Sansa.Orders.compute_risk_for_pip("CAD_CHF", 0.68521, 50, 15)

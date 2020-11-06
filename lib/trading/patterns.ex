@@ -114,4 +114,47 @@ defmodule Sansa.Patterns do
       in_zone(candle_2[:open], zone)
     )
   end
+
+  def check_pattern(:engulfing_bb, "buy", zone, prices) do
+    candle_2 = prices |> Enum.reverse |> hd
+    candle_1 = prices |> Enum.reverse |> Enum.at(1)
+    corps_candle = abs(candle_2[:open] - candle_2[:close])
+    min_o_c = Enum.min([candle_2[:close], candle_2[:open]])
+    max_o_c = Enum.max([candle_2[:close], candle_2[:open]])
+    bot_wick = abs(min_o_c - candle_2[:low])
+    top_wick = abs(max_o_c - candle_2[:high])
+
+    ## conditions --
+    corps_candle < 2.5 * candle_2[:atr]   &&
+    corps_candle >= 0.5 * candle_2[:atr]  &&
+    candle_1[:open] > candle_1[:close]    &&
+    candle_2[:open] < candle_2[:close]    &&
+    candle_1[:open] < candle_2[:close]    &&
+    bot_wick < candle_2[:atr]             &&
+    candle_2[:close] > candle_2[:bol_low] &&
+    candle_1[:close] < candle_1[:bol_low] &&
+    candle_2[:high] < candle_2[:bol_mm]
+  end
+
+  def check_pattern(:engulfing_bb, "sell", zone, prices) do
+    candle_2 = prices |> Enum.reverse |> hd
+    candle_1 = prices |> Enum.reverse |> Enum.at(1)
+    corps_candle = abs(candle_2[:open] - candle_2[:close])
+    min_o_c = Enum.min([candle_2[:close], candle_2[:open]])
+    max_o_c = Enum.max([candle_2[:close], candle_2[:open]])
+    bot_wick = abs(min_o_c - candle_2[:low])
+    top_wick = abs(max_o_c - candle_2[:high])
+
+    ## conditions --
+    corps_candle < 2.5 * candle_2[:atr]    &&
+    corps_candle >= 0.5 * candle_2[:atr]   &&
+    candle_1[:open] < candle_1[:close]     &&
+    candle_2[:open] > candle_2[:close]     &&
+    candle_1[:open] > candle_2[:close]     &&
+    top_wick < candle_2[:atr]              &&
+    candle_2[:close] < candle_2[:bol_high] &&
+    candle_1[:close] > candle_1[:bol_high] &&
+    candle_2[:low] > candle_2[:bol_mm]
+  end
+
 end

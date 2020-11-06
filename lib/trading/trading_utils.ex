@@ -31,6 +31,20 @@ defmodule Sansa.TradingUtils do
     Enum.map(& put_in(&1, [:tr], &1.high - &1.low))
   end
 
+  # def sma(list_price, nb_periods, key \\ :close, dest_key \\ :sma) do
+  #   if Enum.count(list_price) <= nb_periods do
+  #       Logger.error("Nb of periods too large!")
+  #       :error
+  #   else
+  #       {first_prices, _} = Enum.split(list_price, nb_periods - 1)
+  #       first_prices = Enum.map(first_prices, & put_in(&1, [dest_key], 0))
+  #       last_prices = Enum.chunk_every(list_price, nb_periods, 1, :discard) |> Enum.map(fn chunck ->
+  #           put_in(Enum.reverse(chunck) |> hd, [dest_key], (Enum.sum(Enum.map(chunck, & &1[key]))/nb_periods))
+  #       end)
+  #       first_prices ++ last_prices
+  #   end
+  # end
+
   def atr(list_price, nb_periods \\ 14, dest_key \\ :atr) do
     if Enum.count(list_price) <= nb_periods do
         Logger.error("Nb of periods too large!")
@@ -41,4 +55,18 @@ defmodule Sansa.TradingUtils do
         ema(nb_periods, :tr, dest_key)
     end
   end
+
+  # def bol(list_price, nb_periods \\ 20) do
+  #   list_price = sma(list_price, nb_periods, :close, :bol_mm)
+  #   {first_prices, _} = Enum.split(list_price, nb_periods - 1)
+  #   first_prices = Enum.map(first_prices, & put_in(&1, [:bol_high], 0) |> put_in([:bol_low], 0))
+  #   last_prices = Enum.chunk_every(list_price, nb_periods, 1, :discard) |> Enum.map(fn chunck ->
+  #       price = Enum.reverse(chunck) |> hd
+  #       moyenne = price.bol_mm
+  #       std_dev = std_deviation(chunck |> Enum.map(& &1.close), moyenne)
+  #       put_in(price, [:bol_high], moyenne + 2*std_dev) |>
+  #       put_in([:bol_low], moyenne - 2*std_dev)
+  #   end)
+  #   first_prices ++ last_prices
+  # end
 end
