@@ -10,10 +10,13 @@ defmodule Sansa.Patterns do
   # }
   def run_pattern_detection(type, prices, zones) do
     Enum.reduce_while(zones, :no_trade, fn zone, acc ->
-      case zone[:bias] do
-        "buy" ->
+      case zone do
+        %{locked: true} ->
+          Logger.warn("A zone is locked (#{inspect zone})")
+          {:cont, acc}
+        %{bias: "buy"} ->
           if check_pattern(type, "buy", zone, prices), do: {:halt, {:ok, :buy}}, else: {:cont, acc}
-        "sell" ->
+        %{bias: "sell"} ->
           if check_pattern(type, "sell", zone, prices), do: {:halt, {:ok, :sell}}, else: {:cont, acc}
         _ ->
           cond do
@@ -41,7 +44,8 @@ defmodule Sansa.Patterns do
     max_o_c > zone[:l] &&
     last_price[:low] < zone[:h] &&
     bot_wick >= 2*corps_candle &&
-    corps_candle <= last_price[:atr] &&
+    top_wick >= 0.75*last_price[:atr] &&
+    corps_candle <= 0.5*last_price[:atr] &&
     top_wick <= 0.5*bot_wick &&
     abs(last_price[:open] - last_price[:close]) < 2.5 * last_price[:atr]
   end
@@ -58,7 +62,8 @@ defmodule Sansa.Patterns do
     min_o_c < zone[:h] &&
     last_price[:high] > zone[:l] &&
     top_wick >= 2*corps_candle &&
-    corps_candle <= last_price[:atr] &&
+    top_wick >= 0.75*last_price[:atr] &&
+    corps_candle <= 0.5*last_price[:atr] &&
     bot_wick <= 0.5*top_wick &&
     abs(last_price[:open] - last_price[:close]) < 2.5 * last_price[:atr]
   end
@@ -75,7 +80,7 @@ defmodule Sansa.Patterns do
     corps_candle = abs(candle_2[:open] - candle_2[:close])
     min_o_c = Enum.min([candle_2[:close], candle_2[:open]])
     max_o_c = Enum.max([candle_2[:close], candle_2[:open]])
-    bot_wick = abs(min_o_c - candle_2[:low])
+    _bot_wick = abs(min_o_c - candle_2[:low])
     top_wick = abs(max_o_c - candle_2[:high])
 
     ## conditions --
@@ -88,7 +93,8 @@ defmodule Sansa.Patterns do
     (
       in_zone(candle_1[:open], zone) ||
       in_zone(candle_1[:close], zone) ||
-      in_zone(candle_2[:open], zone)
+      in_zone(candle_2[:open], zone) ||
+      (candle_1.open > zone.h && candle_1.close < zone.l)
     )
   end
 
@@ -99,7 +105,7 @@ defmodule Sansa.Patterns do
     min_o_c = Enum.min([candle_2[:close], candle_2[:open]])
     max_o_c = Enum.max([candle_2[:close], candle_2[:open]])
     bot_wick = abs(min_o_c - candle_2[:low])
-    top_wick = abs(max_o_c - candle_2[:high])
+    _top_wick = abs(max_o_c - candle_2[:high])
 
     ## conditions --
     corps_candle < 2.5 * candle_2[:atr] &&
@@ -111,7 +117,8 @@ defmodule Sansa.Patterns do
     (
       in_zone(candle_1[:open], zone) ||
       in_zone(candle_1[:close], zone) ||
-      in_zone(candle_2[:open], zone)
+      in_zone(candle_2[:open], zone) ||
+      (candle_1.close > zone.h && candle_1.open < zone.l)
     )
   end
 end

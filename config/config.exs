@@ -5,66 +5,6 @@
           account_id_file: "data/oanda_account"
       ],
       trading: [
-          taille_pour_mille: %{
-              "AUD_JPY" => 0.083,
-              "EUR_CHF" => 0.093,
-              "GBP_AUD" => 0.061,
-              "NZD_CAD" => 0.068,
-              "CAD_CHF" => 0.094,
-              "EUR_USD" => 0.091,
-              "GBP_USD" => 0.091,
-              "USD_CHF" => 0.094,
-              "EUR_JPY" => 0.084,
-              "NZD_JPY" => 0.084,
-              "AUD_CHF" => 0.094,
-              "GBP_CAD" => 0.068,
-              "USD_CAD" => 0.065,
-              "AUD_USD" => 0.091,
-              "NZD_USD" => 0.091,
-              "EUR_AUD" => 0.06,
-              "EUR_GBP" => 0.11,
-              "GBP_CHF" => 0.093,
-              "GBP_JPY" => 0.082,
-              "USD_JPY" => 0.082,
-              "AUD_NZD" => 0.056,
-              "AUD_CAD" => 0.064,
-              "CHF_JPY" => 0.082,
-              "CAD_JPY" => 0.082,
-              "EUR_NZD" => 0.056,
-              "EUR_CAD" => 0.064,
-              "GBP_NZD" => 0.056,
-              "NZD_CHF" => 0.093
-          },
-          position_pip: %{
-              "AUD_JPY" => 0.01,
-              "EUR_CHF" => 0.0001,
-              "GBP_AUD" => 0.0001,
-              "NZD_CAD" => 0.0001,
-              "CAD_CHF" => 0.0001,
-              "EUR_USD" => 0.0001,
-              "USD_JPY" => 0.01,
-              "GBP_USD" => 0.0001,
-              "USD_CHF" => 0.0001,
-              "EUR_JPY" => 0.01,
-              "NZD_JPY" => 0.01,
-              "AUD_CHF" => 0.0001,
-              "GBP_CAD" => 0.0001,
-              "USD_CAD" => 0.0001,
-              "AUD_USD" => 0.0001,
-              "NZD_USD" => 0.0001,
-              "EUR_AUD" => 0.0001,
-              "EUR_GBP" => 0.0001,
-              "GBP_CHF" => 0.0001,
-              "GBP_JPY" => 0.01,
-              "AUD_NZD" => 0.0001,
-              "AUD_CAD" => 0.0001,
-              "CHF_JPY" => 0.01,
-              "CAD_JPY" => 0.01,
-              "EUR_NZD" => 0.0001,
-              "EUR_CAD" => 0.0001,
-              "GBP_NZD" => 0.0001,
-              "NZD_CHF" => 0.0001
-          },
           spread_max: %{
               "AUD_JPY" => 1.8,
               "EUR_CHF" => 2.0,
@@ -128,10 +68,6 @@
             "GBP_NZD",
             "NZD_CHF"
             ]
-          # paires: [
-          #     {"NZD_JPY", :tcsc_strat},
-          #     {"USD_JPY", :tcsc_strat}
-          # ]
       ]
   ],
   logger: [

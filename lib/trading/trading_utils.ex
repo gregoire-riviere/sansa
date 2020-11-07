@@ -41,4 +41,8 @@ defmodule Sansa.TradingUtils do
         ema(nb_periods, :tr, dest_key)
     end
   end
+
+  def pip_position(paire) do
+    if String.contains?(paire, "JPY"), do: 0.01, else: 0.0001
+  end
 end

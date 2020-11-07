@@ -2,7 +2,6 @@ defmodule Oanda.Interface do
   require Logger
 
   @default_ts %{ts_to: 0, ts_from: 0}
-  @position_pip Application.get_env(:sansa, :trading)[:position_pip]
 
   def account_id(), do: File.read!(Application.get_env(:sansa, :oanda)[:account_id_file]) |> String.trim_trailing("\n")
 
@@ -32,7 +31,7 @@ defmodule Oanda.Interface do
               close: p["mid"]["c"] |> Float.parse |> elem(0),
               high: p["mid"]["h"] |> Float.parse |> elem(0),
               low: p["mid"]["l"] |> Float.parse |> elem(0),
-              spread: abs((p["ask"]["c"] |> Float.parse |> elem(0)) - (p["bid"]["c"] |> Float.parse |> elem(0)))/@position_pip[actif]
+              spread: abs((p["ask"]["c"] |> Float.parse |> elem(0)) - (p["bid"]["c"] |> Float.parse |> elem(0)))/Sansa.TradingUtils.pip_position(actif)
           }
       end)
   end
@@ -91,18 +90,18 @@ defmodule Oanda.Interface do
       end) |> List.flatten
   end
 
-  def change_sl_lvl(sl_tid, new_price) do
+#   def change_sl_lvl(sl_tid, new_price) do
 
-      url = 'https://api-fxpractice.oanda.com/v3/accounts/#{account_id()}/orders/#{sl_tid}'
-      {:ok,{{_,200,_},_,res}} = :httpc.request(:get,{url, main_header()},[recv_timeout: 300_000, connect_timeout: 300_000], [])
-      order = res |> Poison.decode! |> get_in(["order"])
+#       url = 'https://api-fxpractice.oanda.com/v3/accounts/#{account_id()}/orders/#{sl_tid}'
+#       {:ok,{{_,200,_},_,res}} = :httpc.request(:get,{url, main_header()},[recv_timeout: 300_000, connect_timeout: 300_000], [])
+#       order = res |> Poison.decode! |> get_in(["order"])
 
-      commande = %{
-          "order" => put_in(order, ["price"], "#{new_price}")
-      }
-      commande = '#{Poison.encode!(commande)}'
-      {:ok,{{_,code,_},_,res}} = :httpc.request(:put, {url, main_header(), 'application/json', commande}, [recv_timeout: 300_000, connect_timeout: 300_000], [])
-      :ok
-  end
+#       commande = %{
+#           "order" => put_in(order, ["price"], "#{new_price}")
+#       }
+#       commande = '#{Poison.encode!(commande)}'
+#       {:ok,{{_,code,_},_,res}} = :httpc.request(:put, {url, main_header(), 'application/json', commande}, [recv_timeout: 300_000, connect_timeout: 300_000], [])
+#       :ok
+#   end
 
 end
