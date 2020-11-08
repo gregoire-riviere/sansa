@@ -6,7 +6,7 @@ defmodule Sansa.Price.Watcher do
   @paires Application.get_env(:sansa, :trading)[:paires]
   @spread_max Application.get_env(:sansa, :trading)[:spread_max]
   @pattern_activated [:shooting_star, :engulfing]
-  @orders_activated true
+  @test_mode true
 
   def start_link(_) do
       GenServer.start_link(__MODULE__, :ok, name: __MODULE__)
@@ -41,9 +41,10 @@ defmodule Sansa.Price.Watcher do
   end
 
   def is_pull_authorized() do
-      Date.day_of_week(Timex.today) != 7 &&
+      @test_mode ||
+      (Date.day_of_week(Timex.today) != 7 &&
       Date.day_of_week(Timex.today) != 6 &&
-      !(Date.day_of_week(Timex.today) == 5 && Timex.now("Europe/Paris").hour >= 18)
+      !(Date.day_of_week(Timex.today) == 5 && Timex.now("Europe/Paris").hour >= 18))
   end
 
   def test_loop(p, ts) do
@@ -58,7 +59,7 @@ defmodule Sansa.Price.Watcher do
             Slack.Communcation.send_message("#suivi", "New #{to_string sens} on #{to_string pat} pattern on zone on #{p}")
             Logger.info("New #{to_string sens} on #{to_string pat} pattern on zone on #{p}")
             cond do
-              !@orders_activated                -> Logger.warn("Order passing disabled")
+              @test_mode                        -> Logger.warn("Order passing disabled")
                                                     {:cont, acc}
               zone[:locked]                     -> Logger.warn("Zone is locked")
                                                     {:cont, acc}
@@ -104,7 +105,7 @@ defmodule Sansa.Price.Watcher do
                     Slack.Communcation.send_message("#suivi", "New #{to_string sens} on #{to_string pat} pattern on zone on #{p}")
                     Logger.info("New #{to_string sens} on #{to_string pat} pattern on zone on #{p}")
                     cond do
-                      !@orders_activated                -> Logger.warn("Order passing disabled")
+                      !@test_mode                -> Logger.warn("Order passing disabled")
                                                            {:cont, acc}
                       zone[:locked]                     -> Logger.warn("Zone is locked")
                                                            {:cont, acc}
