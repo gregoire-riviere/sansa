@@ -27,13 +27,15 @@ defmodule Sansa.Orders do
     (((max_risk_eur/sl_distance)*sl_position)/pip_factor)*conversion_factor
   end
 
-  def new_order(paire, prices, sens), do: GenServer.cast(Sansa.Orders, {:new_order, paire, prices, sens, @order_method})
-  def handle_cast({:new_order, paire, prices, sens, :regular}, _) do
+  def new_order(paire, prices, sens), do: GenServer.call(Sansa.Orders, {:new_order, paire, prices, sens, @order_method})
+  def handle_call({:new_order, paire, prices, sens, :regular}, _from, _) do
     cond do
       Oanda.Interface.still_pending(paire) ->
         Slack.Communcation.send_message("#debug", "Ordre toujours en cours pour #{paire}")
+        {:reply, :error, nil}
       length(Oanda.Interface.get_current_positions()) >= @max_number_position ->
         Slack.Communcation.send_message("#debug", "Trop de positions ouvertes pour le moment")
+        {:reply, :error, nil}
       true ->
         current = Enum.reverse(prices) |> hd
         nb_digits = current.close |> Float.to_string |> String.split(".") |> Enum.at(1) |> byte_size
@@ -67,9 +69,8 @@ defmodule Sansa.Orders do
         }
         Logger.info("Ordre passe : #{inspect commande}")
         Slack.Communcation.send_message("#orders_passed", "Nouvel order pour #{paire} : #{inspect commande}")
-        Oanda.Interface.create_order(commande, current, sens, paire)
+        {:reply, Oanda.Interface.create_order(commande, current, sens, paire), nil}
     end
-    {:noreply, nil}
   end
 
   def find_last_point(prices, sens) do
@@ -86,7 +87,7 @@ defmodule Sansa.Orders do
     end
   end
 
-  def handle_cast({:new_order, paire, prices, sens, :tight}, _) do
+  def handle_cast({:new_order, paire, prices, sens, :tight}, _from, _) do
     cond do
       Oanda.Interface.still_pending(paire) ->
         Slack.Communcation.send_message("#debug", "Ordre toujours en cours pour #{paire}")
