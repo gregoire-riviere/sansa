@@ -6,7 +6,7 @@ defmodule Sansa.Price.Watcher do
   @paires Application.get_env(:sansa, :trading)[:paires]
   @spread_max Application.get_env(:sansa, :trading)[:spread_max]
   @pattern_activated [:shooting_star, :engulfing]
-  @test_mode true
+  @test_mode false
 
   def start_link(_) do
       GenServer.start_link(__MODULE__, :ok, name: __MODULE__)
