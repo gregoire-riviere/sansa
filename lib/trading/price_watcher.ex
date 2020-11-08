@@ -64,13 +64,13 @@ defmodule Sansa.Price.Watcher do
                                                     {:cont, acc}
               zone[:one_shot] && !zone[:locked] -> Logger.warn("One shot zone")
                                                     case Sansa.Orders.new_order(p, v, sens) do
-                                                      :error -> Loger.error("Zone not locked because of bad order")
+                                                      :error -> Logger.error("Zone not locked because of bad order")
                                                               {:cont, acc}
                                                       :ok    -> Sansa.ZonePuller.lock_zone(p, zone)
                                                               {:halt, :ok}
                                                     end
               true -> case Sansa.Orders.new_order(p, v, sens) do
-                :error -> Loger.error("Bad order")
+                :error -> Logger.error("Bad order")
                           {:cont, acc}
                 :ok    -> {:halt, :ok}
               end
@@ -110,13 +110,13 @@ defmodule Sansa.Price.Watcher do
                                                            {:cont, acc}
                       zone[:one_shot] && !zone[:locked] -> Logger.warn("One shot zone")
                                                            case Sansa.Orders.new_order(p, v, sens) do
-                                                             :error -> Loger.error("Zone not locked because of bad order")
+                                                             :error -> Logger.error("Zone not locked because of bad order")
                                                                       {:cont, acc}
                                                              :ok    -> Sansa.ZonePuller.lock_zone(p, zone)
                                                                       {:halt, :ok}
                                                            end
                       true -> case Sansa.Orders.new_order(p, v, sens) do
-                        :error -> Loger.error("Bad order")
+                        :error -> Logger.error("Bad order")
                                  {:cont, acc}
                         :ok    -> {:halt, :ok}
                       end
