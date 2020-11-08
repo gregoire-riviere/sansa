@@ -81,8 +81,8 @@ defmodule Sansa.Patterns do
     top_wick = abs(max_o_c - candle_2[:high])
 
     ## conditions --
-    corps_candle < 2.5 * candle_2[:atr] &&
-    corps_candle >= 0.5 * candle_2[:atr] &&
+    corps_candle <= 2 * candle_2[:atr] &&
+    corps_candle >= 0.75 * candle_2[:atr] &&
     candle_1[:open] > candle_1[:close] &&
     candle_2[:open] < candle_2[:close] &&
     candle_1[:open] < candle_2[:close] &&
@@ -105,8 +105,8 @@ defmodule Sansa.Patterns do
     # top_wick = abs(max_o_c - candle_2[:high])
 
     ## conditions --
-    corps_candle < 2.5 * candle_2[:atr] &&
-    corps_candle >= 0.5 * candle_2[:atr] &&
+    corps_candle <= 2 * candle_2[:atr] &&
+    corps_candle >= 0.75 * candle_2[:atr] &&
     candle_1[:open] < candle_1[:close] &&
     candle_2[:open] > candle_2[:close] &&
     candle_1[:open] > candle_2[:close] &&
