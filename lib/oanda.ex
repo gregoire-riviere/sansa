@@ -57,8 +57,10 @@ defmodule Oanda.Interface do
       Logger.debug(res)
       if code < 200 or code >=300 do
           Slack.Communcation.send_message("#orders_passed", "Something strange happened while passing an order : got code #{code}. You may find the reason here : #{res}")
+          :error
       else
           Slack.Communcation.send_message("#orders_passed", "Nouvel ordre passe sur #{paire}")
+          :ok
       end
   end
 

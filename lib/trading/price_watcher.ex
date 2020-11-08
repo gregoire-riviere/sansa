@@ -41,10 +41,9 @@ defmodule Sansa.Price.Watcher do
   end
 
   def is_pull_authorized() do
-      true
-      # Date.day_of_week(Timex.today) != 7 &&
-      # Date.day_of_week(Timex.today) != 6 &&
-      # !(Date.day_of_week(Timex.today) == 5 && Timex.now("Europe/Paris").hour >= 18)
+      Date.day_of_week(Timex.today) != 7 &&
+      Date.day_of_week(Timex.today) != 6 &&
+      !(Date.day_of_week(Timex.today) == 5 && Timex.now("Europe/Paris").hour >= 18)
   end
 
   def test_loop(p, ts) do
@@ -55,10 +54,27 @@ defmodule Sansa.Price.Watcher do
       action = @pattern_activated |> Enum.map(& {&1, Sansa.Patterns.run_pattern_detection(&1, v, Sansa.ZonePuller.get_zones(p))})
       |> Enum.reduce_while(:no_trade, fn a, acc ->
         case a do
-          {pat, {:ok, sens}} ->
+          {pat, {:ok, zone, sens}} ->
+            Slack.Communcation.send_message("#suivi", "New #{to_string sens} on #{to_string pat} pattern on zone on #{p}")
             Logger.info("New #{to_string sens} on #{to_string pat} pattern on zone on #{p}")
-            @orders_activated && Sansa.Orders.new_order(p, v, sens)
-            {:halt, :ok}
+            cond do
+              !@orders_activated                -> Logger.warn("Order passing disabled")
+                                                    {:cont, acc}
+              zone[:locked]                     -> Logger.warn("Zone is locked")
+                                                    {:cont, acc}
+              zone[:one_shot] && !zone[:locked] -> Logger.warn("One shot zone")
+                                                    case Sansa.Orders.new_order(p, v, sens) do
+                                                      :error -> Loger.error("Zone not locked because of bad order")
+                                                              {:cont, acc}
+                                                      :ok    -> Sansa.ZonePuller.lock_zone(p, zone)
+                                                              {:halt, :ok}
+                                                    end
+              true -> case Sansa.Orders.new_order(p, v, sens) do
+                :error -> Loger.error("Bad order")
+                          {:cont, acc}
+                :ok    -> {:halt, :ok}
+              end
+            end
           _ -> {:cont, acc}
         end
       end)
@@ -84,11 +100,27 @@ defmodule Sansa.Price.Watcher do
               action = @pattern_activated |> Enum.map(& {&1, Sansa.Patterns.run_pattern_detection(&1, v, Sansa.ZonePuller.get_zones(p))})
               |> Enum.reduce_while(:no_trade, fn a, acc ->
                 case a do
-                  {pat, {:ok, sens}} ->
+                  {pat, {:ok, zone, sens}} ->
                     Slack.Communcation.send_message("#suivi", "New #{to_string sens} on #{to_string pat} pattern on zone on #{p}")
                     Logger.info("New #{to_string sens} on #{to_string pat} pattern on zone on #{p}")
-                    @orders_activated && Sansa.Orders.new_order(p, v, sens)
-                    {:halt, :ok}
+                    cond do
+                      !@orders_activated                -> Logger.warn("Order passing disabled")
+                                                           {:cont, acc}
+                      zone[:locked]                     -> Logger.warn("Zone is locked")
+                                                           {:cont, acc}
+                      zone[:one_shot] && !zone[:locked] -> Logger.warn("One shot zone")
+                                                           case Sansa.Orders.new_order(p, v, sens) do
+                                                             :error -> Loger.error("Zone not locked because of bad order")
+                                                                      {:cont, acc}
+                                                             :ok    -> Sansa.ZonePuller.lock_zone(p, zone)
+                                                                      {:halt, :ok}
+                                                           end
+                      true -> case Sansa.Orders.new_order(p, v, sens) do
+                        :error -> Loger.error("Bad order")
+                                 {:cont, acc}
+                        :ok    -> {:halt, :ok}
+                      end
+                    end
                   _ -> {:cont, acc}
                 end
               end)
