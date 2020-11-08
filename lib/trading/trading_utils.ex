@@ -69,4 +69,7 @@ defmodule Sansa.TradingUtils do
   #   end)
   #   first_prices ++ last_prices
   # end
+  def pip_position(paire) do
+    if String.contains?(paire, "JPY"), do: 0.01, else: 0.0001
+  end
 end
