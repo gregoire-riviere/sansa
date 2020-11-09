@@ -3,6 +3,7 @@ defmodule Sansa.ZonePuller do
   require Logger
   @file_path "test.json"
   @refresh_period 120_000
+  @zone_alert_period 60_000 * 120
 
   def start_link(_) do
     GenServer.start_link(__MODULE__, nil, name: __MODULE__)
@@ -12,36 +13,32 @@ defmodule Sansa.ZonePuller do
     Logger.info("Starting zones service")
     s = refresh_zones()
     Process.send_after(self(), :refresh_zones, @refresh_period)
+    Process.send_after(self(), :alert_locked_zone, @zone_alert_period)
     {:ok, s}
   end
 
   def handle_info(:refresh_zones, state) do
     Logger.info("Refreshing zones")
-    new_tbl = refresh_zones(state)
+    new_tbl = refresh_zones()
     Process.send_after(self(), :refresh_zones, @refresh_period)
     {:noreply, new_tbl}
   end
-  def refresh_zones(), do: refresh_zones(nil)
-  def refresh_zones(tbl) do
-    tbl != nil && :ets.delete(tbl)
-    new_tbl = :ets.new(:zones, [])
+
+  def refresh_zones() do
     if File.exists?(@file_path) do
       File.read!(@file_path) |>
         Poison.decode!(keys: :atoms) |>
-        Enum.each(fn {k, v} -> :ets.insert(new_tbl, {to_string(k), v}) end)
-    end
-    new_tbl
+        Enum.map(fn {k, v} -> {to_string(k), v} end) |> Enum.into(%{})
+    else %{} end
   end
 
   def get_zones(p), do: GenServer.call(Sansa.ZonePuller, {:get_zones, p})
   def handle_call({:get_zones, p}, _from, state) do
-    res = case :ets.lookup(state, p) do
-      [] ->
+    res = case state[p] do
+      nil ->
         Logger.debug("No zones found")
         []
-      [{_, v}] -> v
-      [{_, v}|_] -> v
-      _ -> []
+      o -> o
     end
     {:reply, res, state}
   end
@@ -55,9 +52,22 @@ defmodule Sansa.ZonePuller do
         paire_zones |> Enum.map(& if &1["h"] == zone.h && &1["l"] == zone.l, do: put_in(&1, [:locked], true), else: &1)
       )
     else content end
-    File.write!(@file_path, Poison.encode!(content))
-    s = refresh_zones(state)
+    File.write!(@file_path, Poison.encode!(content, pretty: true))
+    s = refresh_zones()
     {:noreply, s}
+  end
+
+  def alert_lock_zone(), do: Process.send(Sansa.ZonePuller, :alert_locked_zone, [])
+  def handle_info(:alert_locked_zone, state) do
+    Logger.info("Searching locked zones")
+    zones_locked = Enum.map(state, fn {paire, zones} ->
+      {paire, Enum.filter(zones, & &1[:locked])}
+    end) |> Enum.reject(fn {k, v} -> Enum.count(v) == 0 end)
+    |> Enum.map(fn {k, v} -> "#{Enum.count(v)} zone(s) for #{k}" end)
+    |> Enum.join("\n")
+    Slack.Communcation.send_message("#alert_lock", "Zones locked", zones_locked)
+    Process.send_after(self(), :alert_locked_zone, @zone_alert_period)
+    {:noreply, state}
   end
 
 end

@@ -6,7 +6,7 @@ defmodule Slack.Communcation do
       [{'Content-Type', 'application/json'}, {'Authorization', '#{token}'}]
   end
 
-  def send_message(chan, message) do
+  def send_message(chan, message, attached \\ "") do
     if chan == "#debug" do
       Logger.debug(message)
     else
@@ -14,7 +14,8 @@ defmodule Slack.Communcation do
     end
     req = Poison.encode!(%{
       "channel" => chan,
-      "text" => message
+      "text" => message,
+      "attachments" => [%{text: attached, color: "#ffffff"}]
     })
     url = "https://slack.com/api/chat.postMessage"
     header = slack_header()
