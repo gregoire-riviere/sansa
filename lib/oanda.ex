@@ -13,9 +13,13 @@ defmodule Oanda.Interface do
   def get_prices(ut, actif, nb_candles, opts \\ []) do
       %{ts_to: ts_to, ts_from: ts_from} = Enum.into(Enum.into(opts, %{}), @default_ts)
 
-      ts_to = if ts_to == 0, do: "", else: "&to=#{ts_to}"
-      ts_from = if ts_from == 0, do: "", else: "&from=#{ts_from}"
-      url = 'https://api-fxpractice.oanda.com/v3/instruments/#{actif}/candles?count=#{nb_candles+1}&price=MAB&granularity=#{ut}#{ts_to}#{ts_from}'
+      ts_to =
+      get_options = [
+      (if ts_to == 0, do: "", else: "&to=#{ts_to}"),
+      (if ts_from == 0, do: "", else: "&from=#{ts_from}"),
+      (if ts_from != 0 && ts_to != 0, do: "", else: "count=#{nb_candles+1}"),
+      "price=MAB", "granularity=#{ut}"] |> Enum.reject(& &1 == "") |> Enum.join("&")
+      url = 'https://api-fxpractice.oanda.com/v3/instruments/#{actif}/candles?#{get_options}'
       case :httpc.request(:get,{url, main_header()},[recv_timeout: 60_000, connect_timeout: 60_000], []) do
       {:ok,{{_,200,_},_,res}}->
           Poison.decode!(res) |> clean_prices(actif)
