@@ -26,8 +26,8 @@ defmodule Sansa.Orders do
     (((max_risk_eur/sl_distance)*sl_position)/pip_factor)*conversion_factor
   end
 
-  def new_order(paire, prices, sens), do: GenServer.call(Sansa.Orders, {:new_order, paire, prices, sens})
-  def handle_call({:new_order, paire, prices, sens}, _from, _) do
+  def new_order(paire, prices, sens, rrp \\ @rrp, stop_placement \\ :regular_atr), do: GenServer.call(Sansa.Orders, {:new_order, paire, prices, sens, rrp, stop_placement})
+  def handle_call({:new_order, paire, prices, sens, rrp, stop_placement}, _from, _) do
     cond do
       Oanda.Interface.still_pending(paire) ->
         Slack.Communcation.send_message("#debug", "Ordre toujours en cours pour #{paire}")
@@ -40,9 +40,9 @@ defmodule Sansa.Orders do
         nb_digits = current.close |> Float.to_string |> String.split(".") |> Enum.at(1) |> byte_size
 
         #sl and tp position
-        stop_position = if sens == :buy, do: current.close - @atr_stop_ratio*current.atr, else: current.close + @atr_stop_ratio*current.atr
+        stop_position = Sansa.Stop.place_stop(stop_placement, prices, sens)
         stop_distance = abs(current.close - stop_position)
-        tp_distance = stop_distance * @rrp
+        tp_distance = stop_distance * rrp
         tp_position = if sens == :buy, do: current.close + tp_distance, else: current.close - tp_distance
 
         #Volume computation
@@ -69,6 +69,38 @@ defmodule Sansa.Orders do
         Logger.info("Ordre passe : #{inspect commande}")
         Slack.Communcation.send_message("#orders_passed", "Nouvel order pour #{paire} : #{inspect commande}")
         {:reply, Oanda.Interface.create_order(commande, current, sens, paire), nil}
+    end
+  end
+
+end
+
+
+defmodule Sansa.Stop do
+
+  def place_stop(:regular_atr, prices, sens) do
+    last_price = prices |> Enum.reverse |> hd
+    if sens == :buy do
+      last_price.close - last_price.atr * 2
+    else
+      last_price.close + last_price.atr * 2
+    end
+  end
+
+  def stop_placement(:tight_atr, prices, sens) do
+    last_price = prices |> Enum.reverse |> hd
+    if sens == :buy do
+      last_price.close - last_price.atr * 1.5
+    else
+      last_price.close + last_price.atr * 1.5
+    end
+  end
+
+  def stop_placement(:very_tight, prices, sens) do
+    last_price = prices |> Enum.reverse |> hd
+    if sens == :buy do
+      last_price.close - last_price.atr
+    else
+      last_price.close + last_price.atr
     end
   end
 

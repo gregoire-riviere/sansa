@@ -67,7 +67,10 @@
             "EUR_CAD",
             "GBP_NZD",
             "NZD_CHF"
-            ]
+            ],
+        strats: [
+            {%{name: :ema_cross, rrp: 3, stop_placement: :very_tight}, "CAD_CHF"}
+        ]
       ]
   ],
   logger: [
