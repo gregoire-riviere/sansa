@@ -25,7 +25,7 @@ defmodule Backtest do
     cache = getting_prices(paire, :full)
     results = scanning |> Task.async_stream(fn [x, y, z] ->
       backtest_report(paire, y, z, x, cache)
-    end, max_concurrency: 5) |> Enum.map(fn {:ok, res} -> res end) |> Enum.sort(& &1.gain > &2.gain)
+    end, max_concurrency: 5, timeout: :infinity) |> Enum.map(fn {:ok, res} -> res end) |> Enum.sort(& &1.gain > &2.gain)
 
     File.write!("data/backtest_scan_#{paire}.json", Poison.encode!(results))
 
