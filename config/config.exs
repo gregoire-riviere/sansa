@@ -69,7 +69,9 @@
             "NZD_CHF"
             ],
         strats: [
-            {%{name: :ema_cross, rrp: 3, stop_placement: :very_tight}, "CAD_CHF"}
+            {%{name: :ema_cross, rrp: 3, stop_placement: :very_tight}, "CAD_CHF"},
+            {%{name: :ema_cross, rrp: 2, stop_placement: :very_tight}, "EUR_AUD"},
+            {%{name: :ema_cross, rrp: 3, stop_placement: :regular_atr}, "NZD_JPY"}
         ]
       ]
   ],
