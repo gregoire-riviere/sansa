@@ -35,6 +35,16 @@ defmodule Backtest do
     Slack.Communcation.send_message("#backtest", "Backtest of #{paire} is over. Time for results!", %{attachments: report})
   end
 
+  def analyse_over_pairs() do
+    result = Application.get_env(:sansa, :trading)[:paires] |>
+    Enum.map(fn p ->
+      if File.exists?("data/backtest_scan_#{p}.json") do
+        File.read!("data/backtest_scan_#{p}.json") |> Poison.decode!(keys: :atoms) |> Enum.take(3) |> Enum.map(& put_in(&1, [:paire], p))
+      else [] end
+    end) |> List.flatten |> Enum.sort(& &1.gain > &2.gain)
+    File.write!("data/final_result", Poison.encode!(result, pretty: true))
+  end
+
   def backtest_report(p, position_strat, stop_strat, rrp \\ 1.5, cache \\ nil) do
     prices = cache || getting_prices(p, :small)
     depth = 300
