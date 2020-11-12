@@ -79,4 +79,30 @@ defmodule Sansa.TradingUtils do
       first_prices ++ last_prices
   end
 
+  def baseline(list_price, nb_periods \\ 50, dest_key \\ :baseline) do
+      {first_prices, _} = Enum.split(list_price, nb_periods - 1)
+      first_prices = Enum.map(first_prices, & put_in(&1, [dest_key], 0))
+      last_prices = Enum.chunk_every(list_price, nb_periods, 1, :discard) |> Enum.map(fn chunck ->
+          price = Enum.reverse(chunck) |> hd
+          middle_point = (Enum.max(Enum.map(chunck, & &1.high)) + Enum.min(Enum.map(chunck, & &1.low)))/2
+          put_in(price, [dest_key], middle_point)
+      end)
+      first_prices ++ last_prices
+  end
+
+  def ichimoku(list_prices) do
+    list_prices = list_prices |> baseline(9, :tk) |> baseline(26, :kj)
+    |> baseline(52, :ssb)
+    |> Enum.map(fn p->
+        if p[:tk] && p[:kj] do
+            put_in(p, [:ssa], (p.tk + p.kj)/2)
+        end
+    end)
+    # Decalage
+    {first_prices, last_prices} = Enum.split(list_prices, 26)
+    first_prices ++ (last_prices |> Enum.with_index |> Enum.map(fn {p, i} ->
+        put_in(p, [:ssa], Enum.at(list_prices, i)[:ssa]) |> put_in([:ssb], Enum.at(list_prices, i)[:ssb])
+    end))
+end
+
 end

@@ -10,6 +10,7 @@ defmodule Backtest do
     prices = Enum.chunk_every(ts_array, 2, 1, :discard) |> Enum.map(fn [a, b] -> [a+1, b] end) |> Enum.map(fn [a, b] -> Oanda.Interface.get_prices("H1", p, 0, %{ts_from: a, ts_to: b}) end) |> List.flatten |> Enum.uniq |> Enum.sort(& &1[:time] <= &2[:time])
     |> Sansa.TradingUtils.atr
     |> Sansa.TradingUtils.rsi
+    |> Sansa.TradingUtils.ichimoku
     |> Sansa.TradingUtils.macd
     |> Sansa.TradingUtils.ema(100, :close, :long_trend_100)
     |> Sansa.TradingUtils.ema(200, :close, :long_trend_200)
@@ -19,7 +20,7 @@ defmodule Backtest do
 
   def scan_backtest(paire) do
     rrp = [1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2, 3]
-    strat = [:macd_strat, :ss_ema, :ema_cross]
+    strat = [:macd_strat, :ss_ema, :ema_cross, :ich_cross]
     stop = [:regular_atr, :tight_atr, :very_tight]
     scanning = for x <- rrp, y <- strat, z <- stop, do: [x, y, z]
     cache = getting_prices(paire, :full)
@@ -207,6 +208,38 @@ defmodule Backtest do
       last_price.high >= last_price.long_trend_100 &&
       last_price.close < last_price.long_trend_100 &&
       last_price.rsi > 50 ->
+        sl = stop_placement(stop_strat, new_prices, :sell)
+        tp = last_price.close - rrp * abs(last_price.close - sl)
+        Logger.warn("New short position")
+        %{
+          state: :short_position,
+          trading_info: %{sl: sl, tp: tp, open: last_price},
+          capital: report.capital,
+          result: report.result
+        }
+      true ->
+        report
+    end
+  end
+
+  def evaluate_strategy(:ich_cross, report, new_prices, rrp, stop_strat) do
+    last_price = new_prices |> Enum.reverse |> hd
+    price_before = new_prices |> Enum.reverse |> Enum.at(1)
+
+    cond do
+      last_price.close > last_price.ssa && last_price.close > last_price.ssb &&
+      price_before.tk < price_before.kj && last_price.tk > last_price.kj ->
+        sl = stop_placement(stop_strat, new_prices, :buy)
+        tp = last_price.close + rrp * abs(last_price.close - sl)
+        Logger.warn("New long position")
+        %{
+          state: :long_position,
+          trading_info: %{sl: sl, tp: tp, open: last_price},
+          capital: report.capital,
+          result: report.result
+        }
+      last_price.close < last_price.ssa && last_price.close < last_price.ssb &&
+      price_before.tk > price_before.kj && last_price.tk < last_price.kj ->
         sl = stop_placement(stop_strat, new_prices, :sell)
         tp = last_price.close - rrp * abs(last_price.close - sl)
         Logger.warn("New short position")
