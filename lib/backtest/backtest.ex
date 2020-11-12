@@ -2,12 +2,19 @@ defmodule Backtest do
 
   require Logger
 
-  def getting_prices(p) do
+  def getting_prices(p, scope \\ :small) do
     ts_array =
-    [1483296272, 1496342672] ++
+    (scope == :full && [1483296272, 1496342672] || []) ++
     [1508481872, 1514789072, 1529477072, 1546325072, 1559371472, 1576824272]
-    ++ [1591037072, 1605033872]
+    ++ (scope == :full && [1591037072, 1605033872] || [])
     prices = Enum.chunk_every(ts_array, 2, 1, :discard) |> Enum.map(fn [a, b] -> [a+1, b] end) |> Enum.map(fn [a, b] -> Oanda.Interface.get_prices("H1", p, 0, %{ts_from: a, ts_to: b}) end) |> List.flatten |> Enum.uniq |> Enum.sort(& &1[:time] <= &2[:time])
+    |> Sansa.TradingUtils.atr
+    |> Sansa.TradingUtils.rsi
+    |> Sansa.TradingUtils.macd
+    |> Sansa.TradingUtils.ema(100, :close, :long_trend_100)
+    |> Sansa.TradingUtils.ema(200, :close, :long_trend_200)
+    |> Sansa.TradingUtils.ema(9, :close, :ema_9)
+    |> Sansa.TradingUtils.ema(20, :close, :ema_20)
   end
 
   def scan_backtest(paire) do
@@ -15,9 +22,10 @@ defmodule Backtest do
     strat = [:macd_strat, :ss_ema, :ema_cross]
     stop = [:regular_atr, :tight_atr]
     scanning = for x <- rrp, y <- strat, z <- stop, do: [x, y, z]
-    results = scanning |> Enum.map(fn [x, y, z] ->
-      backtest_report(paire, y, z, x)
-    end) |> Enum.sort(& &1.gain > &2.gain)
+    cache = getting_prices(paire, :full)
+    results = scanning |> Task.async_stream(fn [x, y, z] ->
+      backtest_report(paire, y, z, x, cache)
+    end, max_concurrency: 5) |> Enum.map(fn {:ok, res} -> res end) |> Enum.sort(& &1.gain > &2.gain)
 
     File.write!("data/backtest_scan_#{paire}.json", Poison.encode!(results))
 
@@ -27,8 +35,8 @@ defmodule Backtest do
     Slack.Communcation.send_message("#backtest", "Backtest of #{paire} is over. Time for results!", %{attachments: report})
   end
 
-  def backtest_report(p, position_strat, stop_strat, rrp \\ 1.5) do
-    prices = getting_prices(p)
+  def backtest_report(p, position_strat, stop_strat, rrp \\ 1.5, cache \\ nil) do
+    prices = cache || getting_prices(p, :small)
     depth = 300
     init_capital = 1000
     risk = 10
@@ -99,12 +107,11 @@ defmodule Backtest do
   end
 
   def evaluate_strategy(:macd_strat, report, new_prices, rrp, stop_strat) do
-    new_prices = new_prices |> Sansa.TradingUtils.macd() |> Sansa.TradingUtils.atr |> Sansa.TradingUtils.ema(200, :close, :long_trend)
     current_price = new_prices |> Enum.reverse |> hd
     price_before = new_prices |> Enum.reverse |> Enum.at(1)
 
     cond do
-      current_price.macd_histo >= 0 && price_before.macd_histo <= 0 && current_price.close > current_price.long_trend && current_price.macd_value < 0 ->
+      current_price.macd_histo >= 0 && price_before.macd_histo <= 0 && current_price.close > current_price.long_trend_200 && current_price.macd_value < 0 ->
         sl = stop_placement(stop_strat, new_prices, :buy)
         tp = current_price.close + rrp * abs(current_price.close - sl)
         Logger.warn("New long position")
@@ -114,7 +121,7 @@ defmodule Backtest do
           capital: report.capital,
           result: report.result
         }
-      current_price.macd_histo <= 0 && price_before.macd_histo >= 0 && current_price.close < current_price.long_trend && current_price.macd_value > 0 ->
+      current_price.macd_histo <= 0 && price_before.macd_histo >= 0 && current_price.close < current_price.long_trend_200 && current_price.macd_value > 0 ->
         sl = stop_placement(stop_strat, new_prices, :sell)
         tp = current_price.close - rrp * abs(current_price.close - sl)
         Logger.warn("New short position")
@@ -130,13 +137,12 @@ defmodule Backtest do
   end
 
   def evaluate_strategy(:ema_cross, report, new_prices, rrp, stop_strat) do
-    new_prices = new_prices |> Sansa.TradingUtils.atr |> Sansa.TradingUtils.ema(9, :close, :ema_9) |> Sansa.TradingUtils.ema(20, :close, :ema_20) |> Sansa.TradingUtils.ema(200, :close, :long_trend)
     current_price = new_prices |> Enum.reverse |> hd
     price_before = new_prices |> Enum.reverse |> Enum.at(1)
     corps_candle = abs(current_price.close - current_price.open)
 
     cond do
-      current_price.ema_9 >= current_price.ema_20 && price_before.ema_9 < price_before.ema_20 && current_price.close > current_price.long_trend && current_price.low > current_price.ema_20 && corps_candle < 2*current_price.atr ->
+      current_price.ema_9 >= current_price.ema_20 && price_before.ema_9 < price_before.ema_20 && current_price.close > current_price.long_trend_200 && current_price.low > current_price.ema_20 && corps_candle < 2*current_price.atr ->
         sl = stop_placement(stop_strat, new_prices, :buy)
         tp = current_price.close + rrp * abs(current_price.close - sl)
         Logger.warn("New long position")
@@ -146,7 +152,7 @@ defmodule Backtest do
           capital: report.capital,
           result: report.result
         }
-      current_price.ema_9 <= current_price.ema_20 && price_before.ema_9 > price_before.ema_20 && current_price.close < current_price.long_trend && current_price.high < current_price.ema_20 && corps_candle < 2*current_price.atr->
+      current_price.ema_9 <= current_price.ema_20 && price_before.ema_9 > price_before.ema_20 && current_price.close < current_price.long_trend_200 && current_price.high < current_price.ema_20 && corps_candle < 2*current_price.atr->
         sl = stop_placement(stop_strat, new_prices, :sell)
         tp = current_price.close - rrp * abs(current_price.close - sl)
         Logger.warn("New short position")
@@ -162,7 +168,6 @@ defmodule Backtest do
   end
 
   def evaluate_strategy(:ss_ema, report, new_prices, rrp, stop_strat) do
-    new_prices = new_prices |> Sansa.TradingUtils.atr |> Sansa.TradingUtils.ema(100, :close, :long_trend) |> Sansa.TradingUtils.rsi
     last_price = new_prices |> Enum.reverse |> hd
     whole_candle = last_price[:high] - last_price[:low]
     min_o_c = Enum.min([last_price[:close], last_price[:open]])
@@ -174,8 +179,8 @@ defmodule Backtest do
       bot_wick >= 0.666*whole_candle       &&
       whole_candle >= 0.5*last_price[:atr] &&
       whole_candle < 2.5 * last_price[:atr]  &&
-      last_price.low <= last_price.long_trend &&
-      last_price.close > last_price.long_trend &&
+      last_price.low <= last_price.long_trend_100 &&
+      last_price.close > last_price.long_trend_100 &&
       last_price.rsi < 50 ->
         sl = stop_placement(stop_strat, new_prices, :buy)
         tp = last_price.close + rrp * abs(last_price.close - sl)
@@ -189,8 +194,8 @@ defmodule Backtest do
       top_wick >= 0.666 * whole_candle       &&
       whole_candle >= 0.5 * last_price[:atr] &&
       whole_candle < 2.5 * last_price[:atr] &&
-      last_price.high >= last_price.long_trend &&
-      last_price.close < last_price.long_trend &&
+      last_price.high >= last_price.long_trend_100 &&
+      last_price.close < last_price.long_trend_100 &&
       last_price.rsi > 50 ->
         sl = stop_placement(stop_strat, new_prices, :sell)
         tp = last_price.close - rrp * abs(last_price.close - sl)
