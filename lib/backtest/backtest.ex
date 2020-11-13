@@ -23,7 +23,7 @@ defmodule Backtest do
 
   def scan_backtest(paire) do
     rrp = [1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2, 3]
-    strat = [:macd_strat]#, :ss_ema, :ema_cross, :ich_cross]
+    strat = [:macd_strat, :ss_ema, :ema_cross, :ich_cross]
     stop = [:regular_atr, :tight_atr, :very_tight]
     scanning = for x <- rrp, y <- strat, z <- stop, do: [x, y, z]
     cache = getting_prices(paire, :full)
