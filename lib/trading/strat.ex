@@ -33,5 +33,21 @@ defmodule Sansa.Strat do
     end
   end
 
+  def evaluate_strat(:macd_cross, new_prices) do
+    new_prices = new_prices
+    |> Sansa.TradingUtils.ema(200, :close, :long_trend_200)
+    |> Sansa.TradingUtils.macd
+    current_price = new_prices |> Enum.reverse |> hd
+    price_before = new_prices |> Enum.reverse |> Enum.at(1)
+
+    cond do
+      current_price.macd_histo >= 0 && price_before.macd_histo <= 0 && current_price.close > current_price.long_trend_200 && current_price.macd_value < 0 ->
+        :buy
+      current_price.macd_histo <= 0 && price_before.macd_histo >= 0 && current_price.close < current_price.long_trend_200 && current_price.macd_value > 0 ->
+        :sell
+      true ->
+        :nothing
+    end
+  end
 
 end
