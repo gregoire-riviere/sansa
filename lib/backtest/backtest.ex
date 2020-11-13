@@ -19,9 +19,11 @@ defmodule Backtest do
     |> Sansa.TradingUtils.ema(20, :close, :ema_20)
   end
 
+  def get_spread(price, paire), do: (price.spread)*Sansa.TradingUtils.pip_position(paire)
+
   def scan_backtest(paire) do
     rrp = [1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2, 3]
-    strat = [:macd_strat, :ss_ema, :ema_cross, :ich_cross]
+    strat = [:macd_strat]#, :ss_ema, :ema_cross, :ich_cross]
     stop = [:regular_atr, :tight_atr, :very_tight]
     scanning = for x <- rrp, y <- strat, z <- stop, do: [x, y, z]
     cache = getting_prices(paire, :full)
@@ -68,7 +70,7 @@ defmodule Backtest do
         :long_position -> # Currently in a long_position
           cond do
             current_price.low <= report.trading_info.sl ->
-              Logger.info("New loss (#{current_price.time})")
+              # Logger.info("New loss")
               %{
                 state: :not_trading,
                 trading_info: nil,
@@ -76,7 +78,7 @@ defmodule Backtest do
                 result: report.result ++ [%{close: current_price, outcome: :loss, open: report.trading_info}]
               }
               current_price.high >= report.trading_info.tp ->
-                Logger.info("New win")
+                # Logger.info("New win")
               %{
                 state: :not_trading,
                 trading_info: nil,
@@ -89,7 +91,7 @@ defmodule Backtest do
         :short_position -> # Currently in a short_position
         cond do
           current_price.high >= report.trading_info.sl ->
-            Logger.info("New loss")
+            # Logger.info("New loss")
             %{
               state: :not_trading,
               trading_info: nil,
@@ -97,7 +99,7 @@ defmodule Backtest do
               result: report.result ++ [%{close: current_price, outcome: :loss, open: report.trading_info}]
             }
           current_price.low <= report.trading_info.tp ->
-            Logger.info("New win")
+            # Logger.info("New win")
             %{
               state: :not_trading,
               trading_info: nil,
@@ -108,7 +110,16 @@ defmodule Backtest do
         end
       end
       if report.state == :not_trading && @spread_max[p] >= hd(Enum.reverse(new_prices))[:spread] do
-        evaluate_strategy(position_strat, report, new_prices, rrp, stop_strat)
+        r = evaluate_strategy(position_strat, report, new_prices, rrp, stop_strat)
+        case r.state do
+          :long_position ->
+            put_in(r, [:trading_info, :sl], r.trading_info.sl + (get_spread(hd(Enum.reverse(new_prices)), p))/2) |>
+            put_in([:trading_info, :tp], r.trading_info.tp + (get_spread(hd(Enum.reverse(new_prices)), p))/2)
+          :short_position ->
+            put_in(r, [:trading_info, :sl], r.trading_info.sl - (get_spread(hd(Enum.reverse(new_prices)), p))/2) |>
+            put_in([:trading_info, :tp], r.trading_info.tp - (get_spread(hd(Enum.reverse(new_prices)), p))/2)
+          _ -> r
+        end
       else report end
     end)
     win_rate = ((Enum.count(report.result, & &1.outcome == :win) / Enum.count(report.result)) * 100) |> Float.round
@@ -129,7 +140,7 @@ defmodule Backtest do
         Logger.warn("New long position")
         %{
           state: :long_position,
-          trading_info: %{sl: sl + (current_price.spread/2), tp: tp  + (current_price.spread/2), open: current_price},
+          trading_info: %{sl: sl, tp: tp , open: current_price},
           capital: report.capital,
           result: report.result
         }
@@ -139,7 +150,7 @@ defmodule Backtest do
         Logger.warn("New short position")
         %{
           state: :short_position,
-          trading_info: %{sl: sl - (current_price.spread/2), tp: tp  - (current_price.spread/2), open: current_price},
+          trading_info: %{sl: sl, tp: tp , open: current_price},
           capital: report.capital,
           result: report.result
         }
@@ -160,7 +171,7 @@ defmodule Backtest do
         Logger.warn("New long position")
         %{
           state: :long_position,
-          trading_info: %{sl: sl + (current_price.spread/2), tp: tp  + (current_price.spread/2), open: current_price},
+          trading_info: %{sl: sl, tp: tp , open: current_price},
           capital: report.capital,
           result: report.result
         }
@@ -170,7 +181,7 @@ defmodule Backtest do
         Logger.warn("New short position")
         %{
           state: :short_position,
-          trading_info: %{sl: sl - (current_price.spread/2), tp: tp  - (current_price.spread/2), open: current_price},
+          trading_info: %{sl: sl, tp: tp , open: current_price},
           capital: report.capital,
           result: report.result
         }
@@ -199,7 +210,7 @@ defmodule Backtest do
         Logger.warn("New long position")
         %{
           state: :long_position,
-          trading_info: %{sl: sl + (last_price.spread/2), tp: tp  + (last_price.spread/2), open: last_price},
+          trading_info: %{sl: sl, tp: tp , open: last_price},
           capital: report.capital,
           result: report.result
         }
@@ -214,7 +225,7 @@ defmodule Backtest do
         Logger.warn("New short position")
         %{
           state: :short_position,
-          trading_info: %{sl: sl - (last_price.spread/2), tp: tp  - (last_price.spread/2), open: last_price},
+          trading_info: %{sl: sl, tp: tp , open: last_price},
           capital: report.capital,
           result: report.result
         }
@@ -235,7 +246,7 @@ defmodule Backtest do
         Logger.warn("New long position")
         %{
           state: :long_position,
-          trading_info: %{sl: sl + (last_price.spread/2), tp: tp  + (last_price.spread/2), open: last_price},
+          trading_info: %{sl: sl, tp: tp , open: last_price},
           capital: report.capital,
           result: report.result
         }
@@ -246,7 +257,7 @@ defmodule Backtest do
         Logger.warn("New short position")
         %{
           state: :short_position,
-          trading_info: %{sl: sl - (last_price.spread/2), tp: tp  - (last_price.spread/2), open: last_price},
+          trading_info: %{sl: sl, tp: tp , open: last_price},
           capital: report.capital,
           result: report.result
         }
