@@ -49,7 +49,7 @@ defmodule Sansa.Price.Watcher do
 
   def test_loop(p, ts) do
     v = Oanda.Interface.get_prices(@ut, p, 100, %{ts_to: ts}) |> Sansa.TradingUtils.atr
-    if @spread_max[p] <= hd(Enum.reverse(v))[:spread] && false do
+    if @spread_max[p] <= hd(Enum.reverse(v))[:spread] do
       Logger.info("Spread too high")
     else
       action = @pattern_activated |> Enum.map(& {&1, Sansa.Patterns.run_pattern_detection(&1, v, Sansa.ZonePuller.get_zones(p))})

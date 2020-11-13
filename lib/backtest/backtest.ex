@@ -1,10 +1,11 @@
 defmodule Backtest do
 
   require Logger
+  @spread_max Application.get_env(:sansa, :trading)[:spread_max]
 
   def getting_prices(p, scope \\ :small) do
     ts_array =
-    (scope == :full && [1483296272, 1496342672] || []) ++
+    # (scope == :full && [1483296272, 1496342672] || []) ++
     [1508481872, 1514789072, 1529477072, 1546325072, 1559371472, 1576824272]
     ++ (scope == :full && [1591037072, 1605033872] || [])
     prices = Enum.chunk_every(ts_array, 2, 1, :discard) |> Enum.map(fn [a, b] -> [a+1, b] end) |> Enum.map(fn [a, b] -> Oanda.Interface.get_prices("H1", p, 0, %{ts_from: a, ts_to: b}) end) |> List.flatten |> Enum.uniq |> Enum.sort(& &1[:time] <= &2[:time])
@@ -106,7 +107,7 @@ defmodule Backtest do
           true -> report
         end
       end
-      if report.state == :not_trading do
+      if report.state == :not_trading && @spread_max[p] >= hd(Enum.reverse(new_prices))[:spread] do
         evaluate_strategy(position_strat, report, new_prices, rrp, stop_strat)
       else report end
     end)
@@ -128,7 +129,7 @@ defmodule Backtest do
         Logger.warn("New long position")
         %{
           state: :long_position,
-          trading_info: %{sl: sl, tp: tp, open: current_price},
+          trading_info: %{sl: sl + (current_price.spread/2), tp: tp  + (current_price.spread/2), open: current_price},
           capital: report.capital,
           result: report.result
         }
@@ -138,7 +139,7 @@ defmodule Backtest do
         Logger.warn("New short position")
         %{
           state: :short_position,
-          trading_info: %{sl: sl, tp: tp, open: current_price},
+          trading_info: %{sl: sl - (current_price.spread/2), tp: tp  - (current_price.spread/2), open: current_price},
           capital: report.capital,
           result: report.result
         }
@@ -159,7 +160,7 @@ defmodule Backtest do
         Logger.warn("New long position")
         %{
           state: :long_position,
-          trading_info: %{sl: sl, tp: tp, open: current_price},
+          trading_info: %{sl: sl + (current_price.spread/2), tp: tp  + (current_price.spread/2), open: current_price},
           capital: report.capital,
           result: report.result
         }
@@ -169,7 +170,7 @@ defmodule Backtest do
         Logger.warn("New short position")
         %{
           state: :short_position,
-          trading_info: %{sl: sl, tp: tp, open: current_price},
+          trading_info: %{sl: sl - (current_price.spread/2), tp: tp  - (current_price.spread/2), open: current_price},
           capital: report.capital,
           result: report.result
         }
@@ -198,7 +199,7 @@ defmodule Backtest do
         Logger.warn("New long position")
         %{
           state: :long_position,
-          trading_info: %{sl: sl, tp: tp, open: last_price},
+          trading_info: %{sl: sl + (last_price.spread/2), tp: tp  + (last_price.spread/2), open: last_price},
           capital: report.capital,
           result: report.result
         }
@@ -213,7 +214,7 @@ defmodule Backtest do
         Logger.warn("New short position")
         %{
           state: :short_position,
-          trading_info: %{sl: sl, tp: tp, open: last_price},
+          trading_info: %{sl: sl - (last_price.spread/2), tp: tp  - (last_price.spread/2), open: last_price},
           capital: report.capital,
           result: report.result
         }
@@ -234,7 +235,7 @@ defmodule Backtest do
         Logger.warn("New long position")
         %{
           state: :long_position,
-          trading_info: %{sl: sl, tp: tp, open: last_price},
+          trading_info: %{sl: sl + (last_price.spread/2), tp: tp  + (last_price.spread/2), open: last_price},
           capital: report.capital,
           result: report.result
         }
@@ -245,7 +246,7 @@ defmodule Backtest do
         Logger.warn("New short position")
         %{
           state: :short_position,
-          trading_info: %{sl: sl, tp: tp, open: last_price},
+          trading_info: %{sl: sl - (last_price.spread/2), tp: tp  - (last_price.spread/2), open: last_price},
           capital: report.capital,
           result: report.result
         }
