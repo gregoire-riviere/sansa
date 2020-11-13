@@ -3,7 +3,7 @@ defmodule Sansa do
 
   def start(_type, _args) do
     children = [
-      {Sansa.ZonePuller, []},
+      # {Sansa.ZonePuller, []},
       {Sansa.Strat.Watcher, []},
       {Sansa.Orders, []}
     ]
