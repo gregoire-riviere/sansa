@@ -3,12 +3,22 @@ defmodule Backtest do
   require Logger
   @spread_max Application.get_env(:sansa, :trading)[:spread_max]
 
-  def getting_prices(p, scope \\ :small) do
-    ts_array =
+  def get_increment(ut) do
+    case ut do
+      "H1"  -> 17452800
+      "M15" -> 4363200
+    end
+  end
+
+  def getting_prices(p, ut \\ "H1", scope \\ :small) do
+    Logger.info("Getting prices for #{ut} - #{p}")
+    ts_start = 1547479887
+    final_ts   = 1605033872
+    ts_increment = get_increment(ut)
+    ts_array = Stream.iterate(ts_start, & Enum.min([(&1 + ts_increment), final_ts]))
+    |> Enum.take_while(& &1 != final_ts)
     # (scope == :full && [1483296272, 1496342672] || []) ++
-    [1508481872, 1514789072, 1529477072, 1546325072, 1559371472, 1576824272]
-    ++ (scope == :full && [1591037072, 1605033872] || [])
-    prices = Enum.chunk_every(ts_array, 2, 1, :discard) |> Enum.map(fn [a, b] -> [a+1, b] end) |> Enum.map(fn [a, b] -> Oanda.Interface.get_prices("H1", p, 0, %{ts_from: a, ts_to: b}) end) |> List.flatten |> Enum.uniq |> Enum.sort(& &1[:time] <= &2[:time])
+    prices = Enum.chunk_every(ts_array, 2, 1, :discard) |> Enum.map(fn [a, b] -> [a+1, b] end) |> Enum.map(fn [a, b] -> Oanda.Interface.get_prices(ut, p, 0, %{ts_from: a, ts_to: b}) end) |> List.flatten |> Enum.uniq |> Enum.sort(& &1[:time] <= &2[:time])
     |> Sansa.TradingUtils.atr
     |> Sansa.TradingUtils.rsi
     |> Sansa.TradingUtils.ichimoku
@@ -17,6 +27,8 @@ defmodule Backtest do
     |> Sansa.TradingUtils.ema(200, :close, :long_trend_200)
     |> Sansa.TradingUtils.ema(9, :close, :ema_9)
     |> Sansa.TradingUtils.ema(20, :close, :ema_20)
+    Logger.info("Prices gotten for #{ut} - #{p}")
+    prices
   end
 
   def get_spread(price, paire), do: (price.spread)*Sansa.TradingUtils.pip_position(paire)
@@ -25,17 +37,23 @@ defmodule Backtest do
     rrp = [1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2, 3]
     strat = [:macd_strat, :ss_ema, :ema_cross, :ich_cross]
     stop = [:regular_atr, :tight_atr, :very_tight]
+    ut_list = ["M15", "H1"]
     scanning = for x <- rrp, y <- strat, z <- stop, do: [x, y, z]
-    cache = getting_prices(paire, :full)
-    results = scanning |> Task.async_stream(fn [x, y, z] ->
-      backtest_report(paire, y, z, x, cache)
-    end, max_concurrency: 5, timeout: :infinity) |> Enum.map(fn {:ok, res} -> res end) |> Enum.sort(& &1.gain > &2.gain)
+    results =  Task.async_stream(ut_list, fn u ->
+      cache = getting_prices(paire, u, :full)
+      scanning |> Task.async_stream(fn [x, y, z] ->
+        backtest_report(paire, y, z, x, u, cache)
+      end, max_concurrency: 7, timeout: :infinity) |> Enum.map(fn {:ok, res} -> res end)
+    end, max_concurrency: 3, timeout: :infinity) |> Enum.map(fn {:ok, res} -> res end) |> List.flatten
 
     File.write!("data/backtest_scan_#{paire}.json", Poison.encode!(results))
 
-    report = results |> Enum.take(3) |> Enum.map(fn st ->
-      "#{st.position_strat} with a win rate of #{st.win_rate}% and a gain of #{st.gain} euros on #{st.nb_trades} trades (rrp : #{st.rrp}, stop: #{st.stop_strat}"
-    end) |> Enum.join("\n")
+    Slack.Communcation.send_message("#backtest", "==== :vertical_traffic_light: New Backtest ! :vertical_traffic_light: ====")
+    report = Enum.map(ut_list, fn u->
+      ":tada: --- ut : #{u} ---\n" <> (results |> Enum.filter(& &1.ut == u) |> Enum.sort(& &1.gain >= &2.gain) |> Enum.take(3) |> Enum.map(fn st ->
+        "#{st.position_strat} with a win rate of #{st.win_rate}% and a gain of #{st.gain} euros on #{st.nb_trades} trades (rrp : #{st.rrp}, stop: #{st.stop_strat} -- eur/trades : #{(st.gain/st.nb_trades) |> Float.round(2)}"
+      end) |> Enum.join("\n"))
+    end) |> Enum.join("\n\n")
     Slack.Communcation.send_message("#backtest", "Backtest of #{paire} is over. Time for results!", %{attachments: report})
   end
 
@@ -49,7 +67,7 @@ defmodule Backtest do
     File.write!("data/final_result", Poison.encode!(result, pretty: true))
   end
 
-  def backtest_report(p, position_strat, stop_strat, rrp \\ 1.5, cache \\ nil) do
+  def backtest_report(p, position_strat, stop_strat, rrp \\ 1.5, ut \\ "H1", cache \\ nil) do
     prices = cache || getting_prices(p, :small)
     depth = 300
     init_capital = 1000
@@ -126,7 +144,7 @@ defmodule Backtest do
     nb_trades = Enum.count(report.result)
     final_gain = report.capital - init_capital
     Logger.info("End of the backtest. We have a win rate of about #{win_rate} % with #{nb_trades} trades and a result of #{final_gain} €")
-    %{win_rate: win_rate, nb_trades: nb_trades, gain: final_gain, rrp: rrp, stop_strat: stop_strat, position_strat: position_strat}
+    %{win_rate: win_rate, nb_trades: nb_trades, gain: final_gain, rrp: rrp, stop_strat: stop_strat, position_strat: position_strat, ut: ut}
   end
 
   def evaluate_strategy(:macd_strat, report, new_prices, rrp, stop_strat) do
