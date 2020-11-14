@@ -33,6 +33,11 @@ defmodule Backtest do
 
   def get_spread(price, paire), do: (price.spread)*Sansa.TradingUtils.pip_position(paire)
 
+  def run_full_backtest() do
+    Slack.Communcation.send_message("#backtest", "==== :vertical_traffic_light: New Backtest ! :vertical_traffic_light: ====")
+    Application.get_env(:sansa, :trading)[:paires] |> Enum.each(& Backtest.scan_backtest(&1))
+  end
+
   def scan_backtest(paire) do
     rrp = [1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2, 3]
     strat = [:macd_strat, :ss_ema, :ema_cross, :ich_cross]
@@ -48,7 +53,6 @@ defmodule Backtest do
 
     File.write!("data/backtest_scan_#{paire}.json", Poison.encode!(results))
 
-    Slack.Communcation.send_message("#backtest", "==== :vertical_traffic_light: New Backtest ! :vertical_traffic_light: ====")
     report = Enum.map(ut_list, fn u->
       ":tada: --- ut : #{u} ---\n" <> (results |> Enum.filter(& &1.ut == u) |> Enum.sort(& &1.gain >= &2.gain) |> Enum.take(3) |> Enum.map(fn st ->
         "#{st.position_strat} with a win rate of #{st.win_rate}% and a gain of #{st.gain} euros on #{st.nb_trades} trades (rrp : #{st.rrp}, stop: #{st.stop_strat} -- eur/trades : #{(st.gain/st.nb_trades) |> Float.round(2)}"
