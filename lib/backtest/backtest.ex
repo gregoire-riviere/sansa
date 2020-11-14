@@ -2,19 +2,20 @@ defmodule Backtest do
 
   require Logger
   @spread_max Application.get_env(:sansa, :trading)[:spread_max]
-
-  def get_increment(ut) do
-    case ut do
-      "H1"  -> 17452800
-      "M15" -> 4363200
-    end
-  end
+  @increment %{
+    "H1"  => 17452800,
+    "M15" => 4363200
+  }
+  @parallelization %{
+    "H1"  => 7,
+    "M15" => 3
+  }
 
   def getting_prices(p, ut \\ "H1", scope \\ :small) do
     Logger.info("Getting prices for #{ut} - #{p}")
     ts_start = 1547479887
     final_ts   = 1605033872
-    ts_increment = get_increment(ut)
+    ts_increment = @increment[ut]
     ts_array = Stream.iterate(ts_start, & Enum.min([(&1 + ts_increment), final_ts]))
     |> Enum.take_while(& &1 != final_ts)
     # (scope == :full && [1483296272, 1496342672] || []) ++
@@ -36,6 +37,7 @@ defmodule Backtest do
   def run_full_backtest() do
     Slack.Communcation.send_message("#backtest", "==== :vertical_traffic_light: New Backtest ! :vertical_traffic_light: ====")
     Application.get_env(:sansa, :trading)[:paires] |> Enum.each(& Backtest.scan_backtest(&1))
+    Slack.Communcation.send_message("#backtest", "==== :trident: Backtest ended :trident: ====")
   end
 
   def scan_backtest(paire) do
@@ -44,12 +46,12 @@ defmodule Backtest do
     stop = [:regular_atr, :tight_atr, :very_tight]
     ut_list = ["M15", "H1"]
     scanning = for x <- rrp, y <- strat, z <- stop, do: [x, y, z]
-    results =  Task.async_stream(ut_list, fn u ->
+    results =  Enum.map(ut_list, fn u ->
       cache = getting_prices(paire, u, :full)
       scanning |> Task.async_stream(fn [x, y, z] ->
         backtest_report(paire, y, z, x, u, cache)
-      end, max_concurrency: 7, timeout: :infinity) |> Enum.map(fn {:ok, res} -> res end)
-    end, max_concurrency: 3, timeout: :infinity) |> Enum.map(fn {:ok, res} -> res end) |> List.flatten
+      end, max_concurrency: @parallelization[u], timeout: :infinity) |> Enum.map(fn {:ok, res} -> res end)
+    end) |> List.flatten
 
     File.write!("data/backtest_scan_#{paire}.json", Poison.encode!(results))
 
@@ -65,7 +67,9 @@ defmodule Backtest do
     result = Application.get_env(:sansa, :trading)[:paires] |>
     Enum.map(fn p ->
       if File.exists?("data/backtest_scan_#{p}.json") do
-        File.read!("data/backtest_scan_#{p}.json") |> Poison.decode!(keys: :atoms) |> Enum.take(3) |> Enum.map(& put_in(&1, [:paire], p))
+        File.read!("data/backtest_scan_#{p}.json") |> Poison.decode!(keys: :atoms)
+        |> Enum.take(3)
+        |> Enum.map(& put_in(&1, [:paire], p))
       else [] end
     end) |> List.flatten |> Enum.sort(& &1.gain > &2.gain)
     File.write!("data/final_result", Poison.encode!(result, pretty: true))
