@@ -50,4 +50,44 @@ defmodule Sansa.Strat do
     end
   end
 
+  def evaluate_strat(:ss_ema, new_prices) do
+    new_prices = new_prices |> Sansa.TradingUtils.ema(100, :close, :long_trend_100)
+    last_price = new_prices |> Enum.reverse |> hd
+    whole_candle = last_price[:high] - last_price[:low]
+    min_o_c = Enum.min([last_price[:close], last_price[:open]])
+    max_o_c = Enum.max([last_price[:close], last_price[:open]])
+    bot_wick = abs(min_o_c - last_price[:low])
+    top_wick = abs(max_o_c - last_price[:high])
+
+    cond do
+      bot_wick >= 0.666 * whole_candle && whole_candle >= 0.5*last_price[:atr] &&
+      whole_candle < 2.5 * last_price[:atr]  && last_price.low <= last_price.long_trend_100 &&
+      last_price.close > last_price.long_trend_100 && last_price.rsi < 50 ->
+        :buy
+      top_wick >= 0.666 * whole_candle && whole_candle >= 0.5 * last_price[:atr] &&
+      whole_candle < 2.5 * last_price[:atr] && last_price.high >= last_price.long_trend_100 &&
+      last_price.close < last_price.long_trend_100 && last_price.rsi > 50 ->
+        :sell
+      true ->
+        :nothing
+    end
+  end
+
+  def evaluate_strat(:ich_cross, new_prices) do
+    new_prices = new_prices |> Sansa.TradingUtils.ichimoku
+    last_price = new_prices |> Enum.reverse |> hd
+    price_before = new_prices |> Enum.reverse |> Enum.at(1)
+
+    cond do
+      last_price.close > last_price.ssa && last_price.close > last_price.ssb &&
+      price_before.tk < price_before.kj && last_price.tk > last_price.kj ->
+        :buy
+      last_price.close < last_price.ssa && last_price.close < last_price.ssb &&
+      price_before.tk > price_before.kj && last_price.tk < last_price.kj ->
+        :sell
+      true ->
+        :nothing
+    end
+  end
+
 end

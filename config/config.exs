@@ -69,12 +69,14 @@
             "NZD_CHF"
             ],
         strats: [
-            {%{name: :ema_cross, rrp: 3, stop_placement: :very_tight}, "CAD_CHF"},
-            {%{name: :macd_cross, rrp: 3, stop_placement: :very_tight}, "NZD_CHF"},
-            {%{name: :macd_cross, rrp: 2, stop_placement: :very_tight}, "GBP_CHF"},
-            {%{name: :ema_cross, rrp: 2, stop_placement: :very_tight}, "EUR_AUD"},
             {%{name: :ema_cross, rrp: 3, stop_placement: :regular_atr}, "NZD_JPY"},
-            {%{name: :ema_cross, rrp: 1.4, stop_placement: :very_tight}, "EUR_CAD"}
+            {%{name: :ema_cross, rrp: 3, stop_placement: :tight_atr}, "GBP_USD"},
+            {%{name: :macd_cross, rrp: 3, stop_placement: :tight_atr}, "NZD_CHF"},
+            {%{name: :ss_ema, rrp: 3, stop_placement: :regular_atr}, "EUR_USD"},
+            {%{name: :ss_ema, rrp: 3, stop_placement: :regular_atr}, "CAD_JPY"},
+            {%{name: :ss_ema, rrp: 3, stop_placement: :regular_atr}, "USD_JPY"},
+            {%{name: :ss_ema, rrp: 3, stop_placement: :very_tight}, "GBP_CAD"},
+            {%{name: :ich_cross, rrp: 2, stop_placement: :regular_atr}, "EUR_NZD"}
         ]
       ]
   ],
