@@ -13,7 +13,7 @@ defmodule Backtest do
 
   def getting_prices(p, ut \\ "H1", scope \\ :small) do
     Logger.info("Getting prices for #{ut} - #{p}")
-    ts_start = 1547479887
+    ts_start = 1527804537
     final_ts   = 1605033872
     ts_increment = @increment[ut]
     ts_array = Stream.iterate(ts_start, & Enum.min([(&1 + ts_increment), final_ts]))
@@ -34,10 +34,11 @@ defmodule Backtest do
 
   def get_spread(price, paire), do: (price.spread)*Sansa.TradingUtils.pip_position(paire)
 
-  def run_full_backtest() do
-    Slack.Communcation.send_message("#backtest", "==== :vertical_traffic_light: New Backtest ! :vertical_traffic_light: ====")
+  def run_full_backtest(name \\ "") do
+    name = if name != "", do: " #{name}", else: name
+    Slack.Communcation.send_message("#backtest", "==== :vertical_traffic_light: New Backtest#{name} ! :vertical_traffic_light: ====")
     Application.get_env(:sansa, :trading)[:paires] |> Enum.each(& Backtest.scan_backtest(&1))
-    Slack.Communcation.send_message("#backtest", "==== :trident: Backtest ended :trident: ====")
+    Slack.Communcation.send_message("#backtest", "==== :trident: Backtest#{name} ended :trident: ====")
   end
 
   def scan_backtest(paire) do
@@ -57,7 +58,7 @@ defmodule Backtest do
 
     report = Enum.map(ut_list, fn u->
       ":tada: --- ut : #{u} ---\n" <> (results |> Enum.filter(& &1.ut == u) |> Enum.sort(& &1.gain >= &2.gain) |> Enum.take(3) |> Enum.map(fn st ->
-        "#{st.position_strat} with a win rate of #{st.win_rate}% and a gain of #{st.gain} euros on #{st.nb_trades} trades (rrp : #{st.rrp}, stop: #{st.stop_strat} -- eur/trades : #{(st.gain/st.nb_trades) |> Float.round(2)}"
+        "#{st.position_strat} with a win rate of #{st.win_rate}% and a gain of #{st.gain} % on #{st.nb_trades} trades (rrp : #{st.rrp}, stop: #{st.stop_strat} -- %/trades : #{(st.gain/st.nb_trades) |> Float.round(2)}"
       end) |> Enum.join("\n"))
     end) |> Enum.join("\n\n")
     Slack.Communcation.send_message("#backtest", "Backtest of #{paire} is over. Time for results!", %{attachments: report})
@@ -68,11 +69,15 @@ defmodule Backtest do
     Enum.map(fn p ->
       if File.exists?("data/backtest_scan_#{p}.json") do
         File.read!("data/backtest_scan_#{p}.json") |> Poison.decode!(keys: :atoms)
-        |> Enum.take(3)
         |> Enum.map(& put_in(&1, [:paire], p))
+        |> Enum.map(& put_in(&1, [:eur_p_trade], &1.gain / &1.nb_trades))
       else [] end
-    end) |> List.flatten |> Enum.sort(& &1.gain > &2.gain)
+    end) |> List.flatten |> Enum.sort(& (&1.gain / &1.nb_trades) > (&2.gain / &2.nb_trades)) |> Enum.take(40)
     File.write!("data/final_result", Poison.encode!(result, pretty: true))
+  end
+
+  def is_valid_period?(ts) do
+    !(ts >= 1583709881 && ts <= 1588285481)
   end
 
   def backtest_report(p, position_strat, stop_strat, rrp \\ 1.5, ut \\ "H1", cache \\ nil) do
@@ -135,7 +140,7 @@ defmodule Backtest do
           true -> report
         end
       end
-      if report.state == :not_trading && @spread_max[p] >= hd(Enum.reverse(new_prices))[:spread] do
+      if report.state == :not_trading && @spread_max[p] >= hd(Enum.reverse(new_prices))[:spread] && is_valid_period?(hd(Enum.reverse(new_prices))[:time]) do
         r = evaluate_strategy(position_strat, report, new_prices, rrp, stop_strat)
         case r.state do
           :long_position ->
@@ -150,8 +155,8 @@ defmodule Backtest do
     end)
     win_rate = ((Enum.count(report.result, & &1.outcome == :win) / Enum.count(report.result)) * 100) |> Float.round
     nb_trades = Enum.count(report.result)
-    final_gain = report.capital - init_capital
-    Logger.info("End of the backtest. We have a win rate of about #{win_rate} % with #{nb_trades} trades and a result of #{final_gain} €")
+    final_gain = (((report.capital - init_capital)/init_capital)*100) |> Float.round(2)
+    Logger.info("End of the backtest. We have a win rate of about #{win_rate} % with #{nb_trades} trades and a result of #{final_gain} %")
     %{win_rate: win_rate, nb_trades: nb_trades, gain: final_gain, rrp: rrp, stop_strat: stop_strat, position_strat: position_strat, ut: ut}
   end
 
