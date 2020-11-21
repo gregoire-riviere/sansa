@@ -21,8 +21,9 @@ defmodule Backtest do
     # (scope == :full && [1483296272, 1496342672] || []) ++
     prices = Enum.chunk_every(ts_array, 2, 1, :discard) |> Enum.map(fn [a, b] -> [a+1, b] end) |> Enum.map(fn [a, b] -> Oanda.Interface.get_prices(ut, p, 0, %{ts_from: a, ts_to: b}) end) |> List.flatten |> Enum.uniq |> Enum.sort(& &1[:time] <= &2[:time])
     |> Sansa.TradingUtils.atr
-    |> Sansa.TradingUtils.rsi
-    |> Sansa.TradingUtils.ichimoku
+    # |> Sansa.TradingUtils.rsi
+    # |> Sansa.TradingUtils.ichimoku
+    |> Sansa.TradingUtils.kst
     |> Sansa.TradingUtils.macd
     |> Sansa.TradingUtils.ema(100, :close, :long_trend_100)
     |> Sansa.TradingUtils.ema(200, :close, :long_trend_200)
@@ -43,9 +44,9 @@ defmodule Backtest do
 
   def scan_backtest(paire) do
     rrp = [1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2, 3]
-    strat = [:macd_strat, :ss_ema, :ema_cross, :ich_cross]
-    stop = [:regular_atr, :tight_atr, :very_tight]
-    ut_list = ["M15", "H1"]
+    strat = [:kst_strat]#, :macd_strat, :ss_ema, :ema_cross, :ich_cross]
+    stop = [:regular_atr, :tight_atr, :very_tight, :large_atr]
+    ut_list = ["H1"]
     scanning = for x <- rrp, y <- strat, z <- stop, do: [x, y, z]
     results =  Enum.map(ut_list, fn u ->
       cache = getting_prices(paire, u, :full)
@@ -190,7 +191,68 @@ defmodule Backtest do
     end
   end
 
+  def evaluate_strategy(:kst_strat, report, new_prices, rrp, stop_strat) do
+    current_price = new_prices |> Enum.reverse |> hd
+    price_before = new_prices |> Enum.reverse |> Enum.at(1)
+
+    cond do
+      current_price.kst_sig < current_price.kst && price_before.kst_sig > price_before.kst && current_price.close > current_price.long_trend_200 && current_price.kst < 0 ->
+        sl = stop_placement(stop_strat, new_prices, :buy)
+        tp = current_price.close + rrp * abs(current_price.close - sl)
+        Logger.warn("New long position")
+        %{
+          state: :long_position,
+          trading_info: %{sl: sl, tp: tp , open: current_price},
+          capital: report.capital,
+          result: report.result
+        }
+      current_price.kst_sig > current_price.kst && price_before.kst_sig < price_before.kst && current_price.close < current_price.long_trend_200 && current_price.kst > 0 ->
+        sl = stop_placement(stop_strat, new_prices, :sell)
+        tp = current_price.close - rrp * abs(current_price.close - sl)
+        Logger.warn("New short position")
+        %{
+          state: :short_position,
+          trading_info: %{sl: sl, tp: tp , open: current_price},
+          capital: report.capital,
+          result: report.result
+        }
+      true ->
+        report
+    end
+  end
+
   def evaluate_strategy(:ema_cross, report, new_prices, rrp, stop_strat) do
+    current_price = new_prices |> Enum.reverse |> hd
+    price_before = new_prices |> Enum.reverse |> Enum.at(1)
+    corps_candle = abs(current_price.close - current_price.open)
+
+    cond do
+      current_price.ema_9 >= current_price.ema_20 && price_before.ema_9 < price_before.ema_20 && current_price.close > current_price.long_trend_200 && current_price.low > current_price.ema_20 && corps_candle < 2*current_price.atr ->
+        sl = stop_placement(stop_strat, new_prices, :buy)
+        tp = current_price.close + rrp * abs(current_price.close - sl)
+        Logger.warn("New long position")
+        %{
+          state: :long_position,
+          trading_info: %{sl: sl, tp: tp , open: current_price},
+          capital: report.capital,
+          result: report.result
+        }
+      current_price.ema_9 <= current_price.ema_20 && price_before.ema_9 > price_before.ema_20 && current_price.close < current_price.long_trend_200 && current_price.high < current_price.ema_20 && corps_candle < 2*current_price.atr->
+        sl = stop_placement(stop_strat, new_prices, :sell)
+        tp = current_price.close - rrp * abs(current_price.close - sl)
+        Logger.warn("New short position")
+        %{
+          state: :short_position,
+          trading_info: %{sl: sl, tp: tp , open: current_price},
+          capital: report.capital,
+          result: report.result
+        }
+      true ->
+        report
+    end
+  end
+
+  def evaluate_strategy(:adx_cross, report, new_prices, rrp, stop_strat) do
     current_price = new_prices |> Enum.reverse |> hd
     price_before = new_prices |> Enum.reverse |> Enum.at(1)
     corps_candle = abs(current_price.close - current_price.open)
@@ -321,6 +383,15 @@ defmodule Backtest do
       last_price.close - last_price.atr
     else
       last_price.close + last_price.atr
+    end
+  end
+
+  def stop_placement(:large_atr, prices, sens) do
+    last_price = prices |> Enum.reverse |> hd
+    if sens == :buy do
+      last_price.close - last_price.atr * 2.5
+    else
+      last_price.close + last_price.atr * 2.5
     end
   end
 

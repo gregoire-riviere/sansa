@@ -14,3 +14,18 @@ start_ts = 1600071589
 end)
 
 Sansa.Orders.new_order("EUR_USD", Oanda.Interface.get_prices("H1", "EUR_USD", 100) |> Sansa.TradingUtils.atr, :buy)
+
+prices = Oanda.Interface.get_prices("H1", "GBP_USD", 100) |> Sansa.TradingUtils.kst
+prices |> Enum.reverse |> hd
+
+
+prices |>
+Sansa.TradingUtils.roc(10, :roc_10) |>
+Sansa.TradingUtils.roc(15, :roc_15) |>
+Sansa.TradingUtils.roc(20, :roc_20) |>
+Sansa.TradingUtils.roc(30, :roc_30) |>
+hd
+
+
+Oanda.Interface.get_prices("H1", "GBP_USD", 20) |> Sansa.TradingUtils.roc(10, :roc_10) |>
+Enum.reverse |> hd

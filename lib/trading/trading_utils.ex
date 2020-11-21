@@ -2,6 +2,25 @@ defmodule Sansa.TradingUtils do
 
   require Logger
 
+  defp init_first(list_prices, nb_prices, key, value) do
+    {first_prices, _last_prices} = Enum.split(list_prices, nb_prices)
+    Enum.map(first_prices, & put_in(&1, [key], value))
+  end
+
+  def sma(list_price, nb_periods, key \\ :close, dest_key \\ :sma) do
+    if Enum.count(list_price) <= nb_periods do
+        Logger.error("Nb of periods too large!")
+        :error
+    else
+        {first_prices, _} = Enum.split(list_price, nb_periods - 1)
+        first_prices = Enum.map(first_prices, & put_in(&1, [dest_key], 0))
+        last_prices  = Enum.chunk_every(list_price, nb_periods, 1, :discard) |> Enum.map(fn chunck ->
+            put_in(Enum.reverse(chunck) |> hd, [dest_key], (Enum.sum(Enum.map(chunck, & &1[key]))/nb_periods))
+        end)
+        first_prices ++ last_prices
+    end
+  end
+
   def ema(list_price, nb_periods, key \\ :close, dest_key \\ :ema) do
     if Enum.count(list_price) <= nb_periods do
         Logger.error("Nb of periods too large!")
@@ -59,6 +78,41 @@ defmodule Sansa.TradingUtils do
   #   end)
   #   first_prices ++ last_prices
   # end
+
+  def roc(list_price, length \\ 9, dest_key \\ :roc) do
+    init_first(list_price, length, dest_key, 0) ++
+    list_price |> Enum.chunk_every(length+1, 1, :discard) |> Enum.map(fn l_p ->
+       c = l_p |> Enum.reverse |> hd
+       p = l_p |> hd
+       c |> put_in([dest_key], 100 * (c.close - p.close)/(p.close))
+    end)
+  end
+
+  def kst(list_price) do
+    list_price
+    |> roc(10, :roc_10)
+    |> roc(15, :roc_15)
+    |> roc(20, :roc_20)
+    |> roc(30, :roc_30)
+    |> sma(10, :roc_10, :roc_mm1)
+    |> sma(10, :roc_15, :roc_mm2)
+    |> sma(10, :roc_20, :roc_mm3)
+    |> sma(15, :roc_30, :roc_mm4)
+    |> Enum.map(& put_in(&1, [:kst], &1.roc_mm1 * 1 + &1.roc_mm2 * 2 + &1.roc_mm3 * 3 + &1.roc_mm4 * 4))
+    |> Enum.map(fn p ->
+        p |>
+        pop_in([:roc_10]) |> elem(1) |>
+        pop_in([:roc_15]) |> elem(1) |>
+        pop_in([:roc_20]) |> elem(1) |>
+        pop_in([:roc_30]) |> elem(1) |>
+        pop_in([:roc_mm1]) |> elem(1) |>
+        pop_in([:roc_mm2]) |> elem(1) |>
+        pop_in([:roc_mm3]) |> elem(1) |>
+        pop_in([:roc_mm4]) |> elem(1)
+    end) |> sma(9, :kst, :kst_sig)
+  end
+
+
   def pip_position(paire) do
     if String.contains?(paire, "JPY"), do: 0.01, else: 0.0001
   end
@@ -103,6 +157,6 @@ defmodule Sansa.TradingUtils do
     first_prices ++ (last_prices |> Enum.with_index |> Enum.map(fn {p, i} ->
         put_in(p, [:ssa], Enum.at(list_prices, i)[:ssa]) |> put_in([:ssb], Enum.at(list_prices, i)[:ssb])
     end))
-end
+  end
 
 end
