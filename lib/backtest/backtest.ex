@@ -13,8 +13,8 @@ defmodule Backtest do
 
   def getting_prices(p, ut \\ "H1", scope \\ :small) do
     Logger.info("Getting prices for #{ut} - #{p}")
-    ts_start = 1527804537
-    final_ts   = 1605033872
+    ts_start = 1483230033
+    final_ts   = 1577838033
     ts_increment = @increment[ut]
     ts_array = Stream.iterate(ts_start, & Enum.min([(&1 + ts_increment), final_ts]))
     |> Enum.take_while(& &1 != final_ts)
@@ -25,6 +25,7 @@ defmodule Backtest do
     # |> Sansa.TradingUtils.ichimoku
     |> Sansa.TradingUtils.kst
     |> Sansa.TradingUtils.macd
+    |> Sansa.TradingUtils.ema(100, :close, :trend_50)
     |> Sansa.TradingUtils.ema(100, :close, :long_trend_100)
     |> Sansa.TradingUtils.ema(200, :close, :long_trend_200)
     |> Sansa.TradingUtils.ema(9, :close, :ema_9)
@@ -196,7 +197,7 @@ defmodule Backtest do
     price_before = new_prices |> Enum.reverse |> Enum.at(1)
 
     cond do
-      current_price.kst_sig < current_price.kst && price_before.kst_sig > price_before.kst && current_price.close > current_price.long_trend_200 && current_price.kst < 0 ->
+      current_price.kst_sig < current_price.kst && price_before.kst_sig > price_before.kst && current_price.trend_50 > current_price.long_trend_200 && current_price.kst < 0 ->
         sl = stop_placement(stop_strat, new_prices, :buy)
         tp = current_price.close + rrp * abs(current_price.close - sl)
         Logger.warn("New long position")
@@ -206,7 +207,7 @@ defmodule Backtest do
           capital: report.capital,
           result: report.result
         }
-      current_price.kst_sig > current_price.kst && price_before.kst_sig < price_before.kst && current_price.close < current_price.long_trend_200 && current_price.kst > 0 ->
+      current_price.kst_sig > current_price.kst && price_before.kst_sig < price_before.kst && current_price.trend_50 < current_price.long_trend_200 && current_price.kst > 0 ->
         sl = stop_placement(stop_strat, new_prices, :sell)
         tp = current_price.close - rrp * abs(current_price.close - sl)
         Logger.warn("New short position")
