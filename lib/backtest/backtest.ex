@@ -46,7 +46,7 @@ defmodule Backtest do
   def scan_backtest(paire) do
     rrp = [1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2, 2.5, 3, 3.5, 4]
     strat = [:macd_strat, :ss_ema, :ema_cross, :ich_cross]
-    stop = [:regular_atr, :tight_atr, :very_tight, :large_atr]
+    stop = [:regular_atr, :tight_atr, :very_tight, :large_atr, :very_large_atr]
     ut_list = ["H1"]
     scanning = for x <- rrp, y <- strat, z <- stop, do: [x, y, z]
     results =  Enum.map(ut_list, fn u ->
