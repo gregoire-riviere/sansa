@@ -373,6 +373,6 @@ defmodule Backtest do
   def stop_placement(:tight_atr, prices, sens), do: atr_stop_placement(prices, sens, 1.5)
   def stop_placement(:very_tight, prices, sens), do: atr_stop_placement(prices, sens, 1)
   def stop_placement(:large_atr, prices, sens), do: atr_stop_placement(prices, sens, 2.5)
-  def stop_placement(:large_atr, prices, sens), do: atr_stop_placement(prices, sens, 3)
+  def stop_placement(:very_large_atr, prices, sens), do: atr_stop_placement(prices, sens, 3)
 
 end
