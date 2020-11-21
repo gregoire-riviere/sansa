@@ -21,9 +21,9 @@ defmodule Backtest do
     # (scope == :full && [1483296272, 1496342672] || []) ++
     prices = Enum.chunk_every(ts_array, 2, 1, :discard) |> Enum.map(fn [a, b] -> [a+1, b] end) |> Enum.map(fn [a, b] -> Oanda.Interface.get_prices(ut, p, 0, %{ts_from: a, ts_to: b}) end) |> List.flatten |> Enum.uniq |> Enum.sort(& &1[:time] <= &2[:time])
     |> Sansa.TradingUtils.atr
-    # |> Sansa.TradingUtils.rsi
-    # |> Sansa.TradingUtils.ichimoku
-    |> Sansa.TradingUtils.kst
+    |> Sansa.TradingUtils.rsi
+    |> Sansa.TradingUtils.ichimoku
+    # |> Sansa.TradingUtils.kst
     |> Sansa.TradingUtils.macd
     |> Sansa.TradingUtils.ema(100, :close, :trend_50)
     |> Sansa.TradingUtils.ema(100, :close, :long_trend_100)
@@ -45,7 +45,7 @@ defmodule Backtest do
 
   def scan_backtest(paire) do
     rrp = [1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2, 3]
-    strat = [:kst_strat]#, :macd_strat, :ss_ema, :ema_cross, :ich_cross]
+    strat = [:macd_strat, :ss_ema, :ema_cross, :ich_cross]
     stop = [:regular_atr, :tight_atr, :very_tight, :large_atr]
     ut_list = ["H1"]
     scanning = for x <- rrp, y <- strat, z <- stop, do: [x, y, z]
