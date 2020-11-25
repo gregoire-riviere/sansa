@@ -8,14 +8,15 @@ defmodule Sansa.Strat.Watcher do
   @strats Application.get_env(:sansa, :trading)[:strats]
   @test_mode false
 
-  def start_link(_) do
-      GenServer.start_link(__MODULE__, :ok, name: __MODULE__)
+  def start_link(opts) do
+      GenServer.start_link(__MODULE__, opts, name: opts.name)
   end
 
-  def init(_) do
-      Logger.info("Demarrage du price watcher")
-      Process.send_after(self(), :tick, next_tick() |> next_pull_ms())
-      {:ok, []}
+  def init(opts) do
+      Logger.info("Demarrage du price watcher #{opts.ut}")
+      Process.send_after(self(), :tick, next_tick(opts.ut) |> next_pull_ms())
+      Logger.debug("Next pull in #{next_tick(opts.ut) |> next_pull_ms()} ms!")
+      {:ok, opts}
   end
 
   def run() do
@@ -34,10 +35,23 @@ defmodule Sansa.Strat.Watcher do
       end
     end
 
-  def next_tick() do
-      now = Timex.now("Europe/Paris")
-      hour = if now.hour == 23, do: 0, else: now.hour + 1
-      {hour, 0}
+  def next_tick(ut) do
+      h = Timex.now("Europe/Paris").hour
+      m = Timex.now("Europe/Paris").minute
+      case ut do
+        "H1"  ->
+          hour = if h == 23, do: 0, else: h + 1
+          {hour, 0}
+        "M15" ->
+          cond do
+            m < 15 -> {h, 15}
+            m < 30 -> {h, 30}
+            m < 45 -> {h, 45}
+            true   ->
+              hour = if h == 23, do: 0, else: h + 1
+              {hour, 0}
+          end
+      end
   end
 
   def is_pull_authorized() do
@@ -49,10 +63,10 @@ defmodule Sansa.Strat.Watcher do
 
 
   ## main loop
-  def handle_info(:tick, _s) do
+  def handle_info(:tick, opts) do
     Logger.info("New price check!")
     if is_pull_authorized() do
-        @strats |> Enum.shuffle |> Enum.map(&
+        @strats[opts.ut] |> Enum.shuffle |> Enum.map(&
         {
           &1,
           Oanda.Interface.get_prices(@ut, elem(&1, 1), 250) |> Sansa.TradingUtils.atr
@@ -74,7 +88,7 @@ defmodule Sansa.Strat.Watcher do
         Logger.debug("Pull not available")
     end
 
-    Process.send_after(self(), :tick, next_tick() |> next_pull_ms())
-    {:noreply, []}
+    Process.send_after(self(), :tick, next_tick(opts.ut) |> next_pull_ms())
+    {:noreply, opts}
   end
 end

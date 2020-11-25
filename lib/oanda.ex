@@ -44,7 +44,7 @@ defmodule Oanda.Interface do
       url= 'https://api-fxpractice.oanda.com/v3/accounts/#{account_id()}/orders?instrument=#{paire}'
       {:ok,{{_,200,_},_,res}} = :httpc.request(:get,{url, main_header()},[recv_timeout: 300_000, connect_timeout: 300_000], [])
       res = Poison.decode!(res)["orders"]
-      Enum.any?(res, fn e -> e["state"] == "PENDING" end)
+      Enum.count(res, fn e -> e["state"] == "PENDING" end) >= 2
   end
 
   def get_capital() do

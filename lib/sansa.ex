@@ -4,7 +4,8 @@ defmodule Sansa do
   def start(_type, _args) do
     children = [
       # {Sansa.ZonePuller, []},
-      {Sansa.Strat.Watcher, []},
+      Supervisor.child_spec({Sansa.Strat.Watcher, %{name: :strat_h1, ut: "H1"}}, id: :strat_h1),
+      Supervisor.child_spec({Sansa.Strat.Watcher, %{name: :strat_m15, ut: "M15"}}, id: :strat_m15),
       {Sansa.Orders, []}
     ]
 

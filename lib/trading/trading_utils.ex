@@ -65,19 +65,21 @@ defmodule Sansa.TradingUtils do
     list_price |> ema(12, :close, :macd_short_ema) |> ema(26, :close, :macd_long_ema) |> Enum.map(& put_in(&1, [:macd_value], &1.macd_short_ema - &1.macd_long_ema)) |> ema(9, :macd_value, :macd_signal) |> Enum.map(& put_in(&1, [:macd_histo], &1.macd_value - &1.macd_signal))
   end
 
-  # def bol(list_price, nb_periods \\ 20) do
-  #   list_price = sma(list_price, nb_periods, :close, :bol_mm)
-  #   {first_prices, _} = Enum.split(list_price, nb_periods - 1)
-  #   first_prices = Enum.map(first_prices, & put_in(&1, [:bol_high], 0) |> put_in([:bol_low], 0))
-  #   last_prices = Enum.chunk_every(list_price, nb_periods, 1, :discard) |> Enum.map(fn chunck ->
-  #       price = Enum.reverse(chunck) |> hd
-  #       moyenne = price.bol_mm
-  #       std_dev = std_deviation(chunck |> Enum.map(& &1.close), moyenne)
-  #       put_in(price, [:bol_high], moyenne + 2*std_dev) |>
-  #       put_in([:bol_low], moyenne - 2*std_dev)
-  #   end)
-  #   first_prices ++ last_prices
-  # end
+  def std_deviation(list_value, moyenne), do: :math.sqrt( (1/(length(list_value))) * Enum.sum(Enum.map(list_value, & :math.pow(&1 - moyenne, 2))) )
+
+  def bol(list_price, nb_periods \\ 20) do
+    list_price = sma(list_price, nb_periods, :close, :bol_mm)
+    {first_prices, _} = Enum.split(list_price, nb_periods - 1)
+    first_prices = Enum.map(first_prices, & put_in(&1, [:bol_high], 0) |> put_in([:bol_low], 0))
+    last_prices = Enum.chunk_every(list_price, nb_periods, 1, :discard) |> Enum.map(fn chunck ->
+        price = Enum.reverse(chunck) |> hd
+        moyenne = price.bol_mm
+        std_dev = std_deviation(chunck |> Enum.map(& &1.close), moyenne)
+        put_in(price, [:bol_high], moyenne + 2*std_dev) |>
+        put_in([:bol_low], moyenne - 2*std_dev)
+    end)
+    first_prices ++ last_prices
+  end
 
   def roc(list_price, length \\ 9, dest_key \\ :roc) do
     init_first(list_price, length, dest_key, 0) ++

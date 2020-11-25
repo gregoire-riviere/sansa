@@ -68,7 +68,8 @@
             "GBP_NZD",
             "NZD_CHF"
             ],
-        strats: [
+        strats: %{"H1" =>
+        [
             {%{name: :ema_cross, rrp: 3, stop_placement: :regular_atr}, "NZD_JPY"},
             {%{name: :ema_cross, rrp: 3, stop_placement: :tight_atr}, "GBP_USD"},
             {%{name: :macd_cross, rrp: 3, stop_placement: :tight_atr}, "NZD_CHF"},
@@ -77,9 +78,11 @@
             {%{name: :ss_ema, rrp: 3, stop_placement: :regular_atr}, "USD_JPY"},
             {%{name: :ss_ema, rrp: 3, stop_placement: :very_tight}, "GBP_CAD"},
             {%{name: :ich_cross, rrp: 2, stop_placement: :regular_atr}, "EUR_NZD"}
-        ]
-      ]
-  ],
+        ],
+        "M15" =>
+        []
+        }
+  ]],
   logger: [
       backends: [{LoggerFileBackend, :info_log}, {LoggerFileBackend, :debug_log}, :console],
       info_log: [
