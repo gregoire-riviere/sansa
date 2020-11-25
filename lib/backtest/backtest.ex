@@ -64,7 +64,7 @@ defmodule Backtest do
       |> Enum.sort(& &1.gain >= &2.gain)
       |> Enum.uniq_by(& &1.position_strat)
       |> Enum.map(fn st ->
-        "#{inspect st.position_strat} with a win rate of #{st.win_rate}% and a gain of #{st.gain} % on #{st.nb_trades} trades (rrp : #{st.rrp}, stop: #{st.stop_strat} -- %/trades : #{(st.gain/st.nb_trades) |> Float.round(2)}"
+        "#{st.position_strat} with a win rate of #{st.win_rate}% and a gain of #{st.gain} % on #{st.nb_trades} trades (rrp : #{st.rrp}, stop: #{st.stop_strat} -- %/trades : #{(st.gain/st.nb_trades) |> Float.round(2)}"
       end) |> Enum.join("\n"))
     end) |> Enum.join("\n\n")
     Slack.Communcation.send_message("#backtest", "Backtest of #{paire} is over. Time for results!", %{attachments: report})
@@ -163,7 +163,7 @@ defmodule Backtest do
     nb_trades = Enum.count(report.result)
     final_gain = (((report.capital - init_capital)/init_capital)*100) |> Float.round(2)
     Logger.info("End of the backtest. We have a win rate of about #{win_rate} % with #{nb_trades} trades and a result of #{final_gain} %")
-    %{win_rate: win_rate, nb_trades: nb_trades, gain: final_gain, rrp: rrp, stop_strat: stop_strat, position_strat: position_strat, ut: ut}
+    %{win_rate: win_rate, nb_trades: nb_trades, gain: final_gain, rrp: rrp, stop_strat: stop_strat, position_strat: "#{inspect position_strat}", ut: ut}
   end
 
   def evaluate_strategy(:macd_strat, report, new_prices, rrp, stop_strat) do
