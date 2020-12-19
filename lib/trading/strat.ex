@@ -8,7 +8,7 @@ defmodule Sansa.Strat do
         Sansa.Orders.new_order(paire, new_prices, :buy, rrp, stop_placement)
         :long_position
       :sell ->
-        Sansa.Orders.new_order(paire, new_prices, :buy, rrp, stop_placement)
+        Sansa.Orders.new_order(paire, new_prices, :sell, rrp, stop_placement)
         :short_position
       _ -> :ok
     end
