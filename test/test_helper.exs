@@ -29,3 +29,12 @@ hd
 
 Oanda.Interface.get_prices("H1", "GBP_USD", 20) |> Sansa.TradingUtils.roc(10, :roc_10) |>
 Enum.reverse |> hd
+
+
+prices = Oanda.Interface.get_prices("H1", "AUD_NZD", 2000) |> Sansa.TradingUtils.ema(50) |> Sansa.TradingUtils.smma(50)
+prices2 = Oanda.Interface.get_prices("H1", "AUD_NZD", 500) |> Sansa.TradingUtils.ema(50) |> Sansa.TradingUtils.smma(50)
+
+prices3 = Oanda.Interface.get_prices("H1", "AUD_NZD", 500) |> Sansa.TradingUtils.schaff_tc
+prices3 |> Enum.reverse |> hd
+# |> Sansa.TradingUtils.schaff_tc
+prices2 |> Enum.reverse |> hd

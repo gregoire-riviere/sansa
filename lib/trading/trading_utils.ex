@@ -3,7 +3,7 @@ defmodule Sansa.TradingUtils do
   require Logger
 
   defp init_first(list_prices, nb_prices, key, value) do
-    {first_prices, _last_prices} = Enum.split(list_prices, nb_prices)
+    {first_prices, last_prices} = Enum.split(list_prices, nb_prices)
     Enum.map(first_prices, & put_in(&1, [key], value))
   end
 
@@ -61,7 +61,7 @@ defmodule Sansa.TradingUtils do
     end
   end
 
-  def macd(list_price) do
+  def macd(list_price, key_short_ema \\ :macd_short_ema, key_long_ema \\ :macd_long_ema, key_value \\ :macd_value) do
     list_price |> ema(12, :close, :macd_short_ema) |> ema(26, :close, :macd_long_ema) |> Enum.map(& put_in(&1, [:macd_value], &1.macd_short_ema - &1.macd_long_ema)) |> ema(9, :macd_value, :macd_signal) |> Enum.map(& put_in(&1, [:macd_histo], &1.macd_value - &1.macd_signal))
   end
 
@@ -83,7 +83,7 @@ defmodule Sansa.TradingUtils do
 
   def roc(list_price, length \\ 9, dest_key \\ :roc) do
     init_first(list_price, length, dest_key, 0) ++
-    list_price |> Enum.chunk_every(length+1, 1, :discard) |> Enum.map(fn l_p ->
+    Enum.chunk_every(length+1, 1, :discard) |> Enum.map(fn l_p ->
        c = l_p |> Enum.reverse |> hd
        p = l_p |> hd
        c |> put_in([dest_key], 100 * (c.close - p.close)/(p.close))
@@ -159,6 +159,55 @@ defmodule Sansa.TradingUtils do
     first_prices ++ (last_prices |> Enum.with_index |> Enum.map(fn {p, i} ->
         put_in(p, [:ssa], Enum.at(list_prices, i)[:ssa]) |> put_in([:ssb], Enum.at(list_prices, i)[:ssb])
     end))
+  end
+
+  def smma(list_prices, nb_periods, key \\ :close, dest_key \\ :ssma) do
+    first_prices = init_first(list_prices, nb_periods, dest_key, 0)
+    init_state = %{
+      previous_smma: (Enum.map(first_prices, & &1[key]) |> Enum.sum)/nb_periods,
+      prices: []
+    }
+    result = Enum.drop(list_prices, nb_periods) |> Enum.reduce(init_state, fn p, acc ->
+      previous_smma = acc.previous_smma
+      current_smma = (p[key] +  previous_smma * (nb_periods - 1))/nb_periods
+      %{
+            previous_smma: current_smma,
+            prices: acc.prices ++ [put_in(p, [dest_key], current_smma)]
+       }
+    end)
+    first_prices ++ result.prices
+  end
+
+  def stoc_tc(list_prices, key \\ :close, key_k \\ :stoc_tc_k, key_d \\ :stoc_tc_d, nb_periods \\ 14) do
+    (init_first(list_prices, nb_periods-1, key_k, 0) ++ (
+      Enum.chunk_every(list_prices, nb_periods, 1, :discard) |> Enum.map(fn chunck ->
+        c_p = chunck |> Enum.reverse |> hd
+        max_p = Enum.max(Enum.map(chunck, & &1[key]))
+        min_p = Enum.min(Enum.map(chunck, & &1[key]))
+        k_value =  if (max_p - min_p) != 0 do
+          (100 * (c_p[key] - min_p) / (max_p - min_p))
+        else 0 end
+        c_p |> put_in([key_k], k_value)
+      end))) |> ema(3, key_k, key_d)
+  end
+
+  def schaff_tc(list_prices) do
+    list_prices |> ema(50, :close, :slow_ema_schaff) |> ema(23, :close, :fast_ema_schaff) |> Enum.map(&
+    put_in(&1, [:macd_schaff], &1.fast_ema_schaff - &1.slow_ema_schaff)) |> stoc_tc(:macd_schaff, :schaff_k, :schaff_d, 10) |>
+    stoc_tc(:schaff_d, :schaff_kd, :schaff_dd, 10) |> Enum.map(fn p ->
+      put_in(p, [:schaff_tc], cond do
+        p.schaff_dd > 100 -> 100
+        p.schaff_dd < 0 -> 0
+        true -> p.schaff_dd
+      end) |>
+      pop_in([:macd_schaff]) |> elem(1) |>
+      pop_in([:slow_ema_schaff]) |> elem(1) |>
+      pop_in([:fast_ema_schaff]) |> elem(1) |>
+      pop_in([:schaff_k]) |> elem(1) |>
+      pop_in([:schaff_d]) |> elem(1) |>
+      pop_in([:schaff_kd]) |> elem(1) |>
+      pop_in([:schaff_dd]) |> elem(1)
+    end)
   end
 
 end
