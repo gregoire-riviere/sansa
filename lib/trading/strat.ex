@@ -60,7 +60,7 @@ defmodule Sansa.Strat do
     cond do
       current_price.schaff_tc >= 25 && price_before.schaff_tc <= 25 && current_price.close > current_price.long_trend_200 ->
         :buy
-        current_price.schaff_tc <= 25 && price_before.schaff_tc >= 25 && current_price.close < current_price.long_trend_200 ->
+        current_price.schaff_tc <= 75 && price_before.schaff_tc >= 75 && current_price.close < current_price.long_trend_200 ->
         :sell
       true ->
         :nothing
