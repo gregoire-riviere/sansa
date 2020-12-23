@@ -50,6 +50,23 @@ defmodule Sansa.Strat do
     end
   end
 
+  def evaluate_strat(:schaff, new_prices) do
+    new_prices = new_prices
+    |> Sansa.TradingUtils.ema(200, :close, :long_trend_200)
+    |> Sansa.TradingUtils.schaff_tc
+    current_price = new_prices |> Enum.reverse |> hd
+    price_before = new_prices |> Enum.reverse |> Enum.at(1)
+
+    cond do
+      current_price.schaff_tc >= 25 && price_before.schaff_tc <= 25 && current_price.close > current_price.long_trend_200 ->
+        :buy
+        current_price.schaff_tc <= 25 && price_before.schaff_tc >= 25 && current_price.close < current_price.long_trend_200 ->
+        :sell
+      true ->
+        :nothing
+    end
+  end
+
   def evaluate_strat(:ss_ema, new_prices) do
     new_prices = new_prices |> Sansa.TradingUtils.ema(100, :close, :long_trend_100)
     last_price = new_prices |> Enum.reverse |> hd
