@@ -69,7 +69,7 @@ defmodule Sansa.Strat.Watcher do
         @strats[opts.ut] |> Enum.shuffle |> Enum.map(&
         {
           &1,
-          Oanda.Interface.get_prices(@ut, elem(&1, 1), 250) |> Sansa.TradingUtils.atr
+          Oanda.Interface.get_prices(opts.ut, elem(&1, 1), 250) |> Sansa.TradingUtils.atr
         }) |> Enum.each(fn {{spec, p}, v} ->
           if @spread_max[p] <= (hd(Enum.reverse(v))[:spread] * Sansa.TradingUtils.pip_position(p)) do
             Slack.Communcation.send_message("#suivi", "Spread too damn high for #{p}")
