@@ -3,7 +3,7 @@ defmodule Sansa.Strat do
   require Logger
 
   def run_strat(name, paire, new_prices, rrp, stop_placement) do
-    case evaluate_strat(name, new_prices) do
+    case evaluate_strat(name, new_prices, %{paire: paire}) do
       :buy ->
         Sansa.Orders.new_order(paire, new_prices, :buy, rrp, stop_placement)
         :long_position
@@ -14,7 +14,7 @@ defmodule Sansa.Strat do
     end
   end
 
-  def evaluate_strat(:ema_cross, new_prices) do
+  def evaluate_strat(:ema_cross, new_prices, _opts) do
     new_prices = new_prices
     |> Sansa.TradingUtils.ema(200, :close, :long_trend_200)
     |> Sansa.TradingUtils.ema(9, :close, :ema_9)
@@ -33,7 +33,7 @@ defmodule Sansa.Strat do
     end
   end
 
-  def evaluate_strat(:macd_cross, new_prices) do
+  def evaluate_strat(:macd_cross, new_prices,  _opts) do
     new_prices = new_prices
     |> Sansa.TradingUtils.ema(200, :close, :long_trend_200)
     |> Sansa.TradingUtils.macd
@@ -50,7 +50,7 @@ defmodule Sansa.Strat do
     end
   end
 
-  def evaluate_strat(:schaff, new_prices) do
+  def evaluate_strat(:schaff, new_prices,  _opts) do
     new_prices = new_prices
     |> Sansa.TradingUtils.ema(200, :close, :long_trend_200)
     |> Sansa.TradingUtils.schaff_tc
@@ -67,7 +67,7 @@ defmodule Sansa.Strat do
     end
   end
 
-  def evaluate_strat(:ss_ema, new_prices) do
+  def evaluate_strat(:ss_ema, new_prices,  _opts) do
     new_prices = new_prices |> Sansa.TradingUtils.ema(100, :close, :long_trend_100)
     last_price = new_prices |> Enum.reverse |> hd
     whole_candle = last_price[:high] - last_price[:low]
@@ -90,7 +90,7 @@ defmodule Sansa.Strat do
     end
   end
 
-  def evaluate_strat(:ich_cross, new_prices) do
+  def evaluate_strat(:ich_cross, new_prices,  _opts) do
     new_prices = new_prices |> Sansa.TradingUtils.ichimoku
     last_price = new_prices |> Enum.reverse |> hd
     price_before = new_prices |> Enum.reverse |> Enum.at(1)
@@ -105,6 +105,15 @@ defmodule Sansa.Strat do
       true ->
         :nothing
     end
+  end
+
+  @random_forest_model %{
+    "AUD_JPY" => "data/random_for_model_aud_jpy_h1.bert"
+  }
+
+  def evaluate_strat(:random_forest, new_prices, %{paire: paire} = _opts) do
+    %{threshold: t, model: model} = File.read(@random_forest_model[paire]) |> :erlang.binary_to_term
+    RandomForest.find_value(random_forest, rec) == :yes && :buy || :nothing
   end
 
 end
