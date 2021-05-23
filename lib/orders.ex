@@ -86,7 +86,7 @@ defmodule Sansa.Stop do
     end
   end
 
-  def stop_placement(:tight_atr, prices, sens) do
+  def place_stop(:tight_atr, prices, sens) do
     last_price = prices |> Enum.reverse |> hd
     if sens == :buy do
       last_price.close - last_price.atr * 1.5
@@ -95,7 +95,7 @@ defmodule Sansa.Stop do
     end
   end
 
-  def stop_placement(:very_tight, prices, sens) do
+  def place_stop(:very_tight, prices, sens) do
     last_price = prices |> Enum.reverse |> hd
     if sens == :buy do
       last_price.close - last_price.atr

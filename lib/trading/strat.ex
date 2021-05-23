@@ -129,13 +129,30 @@ defmodule Sansa.Strat do
       Map.put(:schaff_tc, Sansa.TradingUtils.smart_round(price.schaff_tc, 1)) |>
       Map.put(:ema_200_pr_50, price.ema_200 > price.ema_50 && :above || :under) |>
       Map.put(:price_ema_200, Sansa.TradingUtils.smart_round(abs((price.close - price.ema_200) / Sansa.TradingUtils.pip_position(paire)), 1))
+    end) |> Enum.map(fn p ->
+      %{
+        ema_position: p.ema_200 > p.close && :below || :above,
+        cloud_position: cond do
+          p.ssa >= p.close && p.ssb <= p.close -> :inside
+          p.ssa <= p.close && p.ssb >= p.close -> :inside
+          p.ssa <= p.close && p.ssb <= p.close -> :above
+          p.ssa >= p.close && p.ssb >= p.close -> :below
+        end,
+        cloud_color: p.ssa >= p.ssb && :green || :red,
+        size_atr: abs(p.close - p.open)/p.atr,
+        extension_200: abs(p.close - p.ema_200)/p.atr,
+        cross_kj: cond do
+          p.close >= p.kj && p.open <= p.kj -> :bullish
+          p.close <= p.kj && p.open >= p.kj -> :bearish
+          true -> :none
+        end
+      } |> Map.merge(p)
     end)
   end
 
   def evaluate_strat(:random_forest, new_prices, %{paire: paire} = _opts) do
-
-    %{threshold: t, model: model} = File.read(@random_forest_model[paire]) |> :erlang.binary_to_term
-    RandomForest.find_value(model, new_prices |> prepare_prices_for_rf(paire) |> Enum.reverse |> hd) == :yes && :buy || :nothing
+    %{threshold: t, model: model} = File.read!(@random_forest_model[paire]) |> :erlang.binary_to_term
+    RandomForest.find_value(model, new_prices |> prepare_prices_for_rf(paire) |> Enum.reverse |> hd, t) == :yes && :buy || :nothing
   end
 
 end
