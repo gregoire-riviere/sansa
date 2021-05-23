@@ -210,4 +210,8 @@ defmodule Sansa.TradingUtils do
     end)
   end
 
+  def smart_round(k, n) do
+    Float.round(k * 1.0, n)
+  end
+
 end

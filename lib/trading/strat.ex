@@ -111,9 +111,31 @@ defmodule Sansa.Strat do
     "AUD_JPY" => "data/random_for_model_aud_jpy_h1.bert"
   }
 
+
+
+  def prepare_prices_for_rf(prices, paire) do
+    prices |> Sansa.TradingUtils.atr |>
+    Sansa.TradingUtils.ema(50, :close, :ema_50) |>
+    Sansa.TradingUtils.ema(200, :close, :ema_200) |>
+    Sansa.TradingUtils.schaff_tc() |>
+    Sansa.TradingUtils.rsi |>
+    Sansa.TradingUtils.ichimoku |>
+    Enum.drop(203) |>
+    Enum.map(fn price ->
+      Map.put(price, :candle_color, price.close < price.open && :red || :green) |>
+      Map.put(:candle_size, Sansa.TradingUtils.smart_round((price.close - price.open)/ price.atr, 1)) |>
+      Map.put(:kj_tk, price.kj < price.tk && :up || :down) |>
+      Map.put(:rsi, Sansa.TradingUtils.smart_round(price.rsi, 1)) |>
+      Map.put(:schaff_tc, Sansa.TradingUtils.smart_round(price.schaff_tc, 1)) |>
+      Map.put(:ema_200_pr_50, price.ema_200 > price.ema_50 && :above || :under) |>
+      Map.put(:price_ema_200, Sansa.TradingUtils.smart_round(abs((price.close - price.ema_200) / Sansa.TradingUtils.pip_position(paire)), 1))
+    end)
+  end
+
   def evaluate_strat(:random_forest, new_prices, %{paire: paire} = _opts) do
+
     %{threshold: t, model: model} = File.read(@random_forest_model[paire]) |> :erlang.binary_to_term
-    RandomForest.find_value(random_forest, rec) == :yes && :buy || :nothing
+    RandomForest.find_value(model, new_prices |> prepare_prices_for_rf(paire) |> Enum.reverse |> hd) == :yes && :buy || :nothing
   end
 
 end
