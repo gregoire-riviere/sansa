@@ -79,6 +79,8 @@
                 # {%{name: :ss_ema, rrp: 3, stop_placement: :very_tight}, "GBP_CAD"},
                 # {%{name: :ich_cross, rrp: 2, stop_placement: :regular_atr}, "EUR_NZD"}
                 {%{name: :random_forest, rrp: 2, stop_placement: :tight_atr}, "AUD_JPY"}
+                {%{name: :random_forest, rrp: 2, stop_placement: :tight_atr}, "EUR_USD"}
+                {%{name: :random_forest, rrp: 2, stop_placement: :tight_atr}, "GBP_NZD"}
             ],
             "M15" =>
             [
