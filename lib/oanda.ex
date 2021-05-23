@@ -13,7 +13,6 @@ defmodule Oanda.Interface do
   def get_prices(ut, actif, nb_candles, opts \\ []) do
       %{ts_to: ts_to, ts_from: ts_from} = Enum.into(Enum.into(opts, %{}), @default_ts)
 
-      ts_to =
       get_options = [
       (if ts_to == 0, do: "", else: "&to=#{ts_to}"),
       (if ts_from == 0, do: "", else: "&from=#{ts_from}"),

@@ -13,21 +13,24 @@ defmodule Backtest do
 
   def getting_prices(p, ut \\ "H1", scope \\ :small) do
     Logger.info("Getting prices for #{ut} - #{p}")
-    ts_start = 1452294735
-    final_ts   = 1610147535
-    ts_increment = @increment[ut]
-    ts_array = Stream.iterate(ts_start, & Enum.min([(&1 + ts_increment), final_ts]))
-    |> Enum.take_while(& &1 != final_ts)
-    # (scope == :full && [1483296272, 1496342672] || []) ++
-    prices = Enum.chunk_every(ts_array, 2, 1, :discard) |> Enum.map(fn [a, b] -> [a+1, b] end) |> Enum.map(fn [a, b] -> Oanda.Interface.get_prices(ut, p, 0, %{ts_from: a, ts_to: b}) end) |> List.flatten |> Enum.uniq |> Enum.sort(& &1[:time] <= &2[:time])
+    ts_start = 1609502260
+    final_ts   = 1621508260
+    # ts_increment = @increment[ut]
+    # ts_array = Stream.iterate(ts_start, & Enum.min([(&1 + ts_increment), final_ts]))
+    # |> Enum.take_while(& &1 != final_ts)
+    # # (scope == :full && [1483296272, 1496342672] || []) ++
+    # IO.inspect(Enum.chunk_every(ts_array, 2, 1, :discard))
+    # prices = Enum.chunk_every(ts_array, 2, 1, :discard) |> Enum.map(fn [a, b] -> [a+1, b] end) |> Enum.map(fn [a, b] -> Oanda.Interface.get_prices(ut, p, 0, %{ts_from: a, ts_to: b}) end) |> List.flatten |> Enum.uniq |> Enum.sort(& &1[:time] <= &2[:time])
+    prices = Oanda.Interface.get_prices(ut, p, 0, %{ts_from: ts_start, ts_to: final_ts})
     |> Sansa.TradingUtils.atr
+    |> prepare_prices_for_rf(p)
     # |> Sansa.TradingUtils.rsi
-    |> Sansa.TradingUtils.ichimoku
+    # |> Sansa.TradingUtils.ichimoku
     # |> Sansa.TradingUtils.macd
     # |> Sansa.TradingUtils.ema(50, :close, :trend_50)
     # |> Sansa.TradingUtils.ema(100, :close, :long_trend_100)
     # |> Sansa.TradingUtils.schaff_tc()
-    |> Sansa.TradingUtils.ema(200, :close, :long_trend_200)
+    # |> Sansa.TradingUtils.ema(200, :close, :long_trend_200)
     # |> Sansa.TradingUtils.bol
     # |> Sansa.TradingUtils.ema(9, :close, :ema_9)
     # |> Sansa.TradingUtils.ema(20, :close, :ema_20)
@@ -45,11 +48,12 @@ defmodule Backtest do
   end
 
   def scan_backtest(paire) do
-    rrp = [1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2, 2.25, 2.5]#, 3, 3.5, 4]
-    strat = [{:ema_cross, :ema_9, :ema_20, :trend_100}, :ema_cross, {:ema_cross, :ema_20, :trend_50, :long_trend_200},
-    :bol_strat, :macd_strat, :ss_ema, :ema_cross, :ich_cross]
+    rrp = [2, 2.5]#, 3, 3.5, 4]
+    # strat = [{:ema_cross, :ema_9, :ema_20, :trend_100}, :ema_cross, {:ema_cross, :ema_20, :trend_50, :long_trend_200},
+    # :bol_strat, :macd_strat, :ss_ema, :ema_cross, :ich_cross]
+    strat = [{:random_forest, "data/rf_model_gbp_nzd_h1.bert"}]
     # [:ich_cross_alti]
-    stop = [:regular_atr, :tight_atr, :very_tight, :large_atr, :very_large_atr]
+    stop = [:tight_atr]#:regular_atr, :tight_atr, :very_tight, :large_atr, :very_large_atr]
     ut_list = ["H1"]
     scanning = for x <- rrp, y <- strat, z <- stop, do: [x, y, z]
     results =  Enum.map(ut_list, fn u ->
@@ -250,6 +254,59 @@ defmodule Backtest do
       true ->
         :none
     end
+  end
+
+  def prepare_prices_for_rf(prices, paire) do
+    prices |> Sansa.TradingUtils.atr |>
+    Sansa.TradingUtils.ema(50, :close, :ema_50) |>
+    Sansa.TradingUtils.ema(200, :close, :ema_200) |>
+    Sansa.TradingUtils.schaff_tc() |>
+    Sansa.TradingUtils.rsi |>
+    Sansa.TradingUtils.ichimoku |>
+    Enum.drop(203) |>
+    Enum.map(fn price ->
+      Map.put(price, :candle_color, price.close < price.open && :red || :green) |>
+      Map.put(:candle_size, Sansa.TradingUtils.smart_round((price.close - price.open)/ price.atr, 1)) |>
+      Map.put(:kj_tk, price.kj < price.tk && :up || :down) |>
+      Map.put(:rsi, Sansa.TradingUtils.smart_round(price.rsi, 1)) |>
+      Map.put(:schaff_tc, Sansa.TradingUtils.smart_round(price.schaff_tc, 1)) |>
+      Map.put(:ema_200_pr_50, price.ema_200 > price.ema_50 && :above || :under) |>
+      Map.put(:price_ema_200, Sansa.TradingUtils.smart_round(abs((price.close - price.ema_200) / Sansa.TradingUtils.pip_position(paire)), 1))
+    end) |> Enum.map(fn p ->
+      %{
+        ema_position: p.ema_200 > p.close && :below || :above,
+        cloud_position: cond do
+          p.ssa >= p.close && p.ssb <= p.close -> :inside
+          p.ssa <= p.close && p.ssb >= p.close -> :inside
+          p.ssa <= p.close && p.ssb <= p.close -> :above
+          p.ssa >= p.close && p.ssb >= p.close -> :below
+        end,
+        cloud_color: p.ssa >= p.ssb && :green || :red,
+        size_atr: abs(p.close - p.open)/p.atr,
+        extension_200: abs(p.close - p.ema_200)/p.atr,
+        cross_kj: cond do
+          p.close >= p.kj && p.open <= p.kj -> :bullish
+          p.close <= p.kj && p.open >= p.kj -> :bearish
+          true -> :none
+        end
+      } |> Map.merge(p)
+    end)
+  end
+
+  def evaluate_strategy({:random_forest, model_file}, report, new_prices, rrp, stop_strat) do
+    current_price = new_prices |> Enum.reverse |> hd
+    %{threshold: t, model: model} = File.read!(model_file) |> :erlang.binary_to_term
+    if RandomForest.find_value(model, new_prices |> Enum.reverse |> hd, t) == :yes do
+      sl = stop_placement(stop_strat, new_prices, :buy)
+      tp = current_price.close + rrp * abs(current_price.close - sl)
+      Logger.warn("New long position")
+        %{
+          state: :long_position,
+          trading_info: %{sl: sl, tp: tp , open: current_price},
+          capital: report.capital,
+          result: report.result
+        }
+      else report end
   end
 
   def evaluate_strategy(:bol_strat, report, new_prices, rrp, stop_strat) do

@@ -1,12 +1,7 @@
-defmodule Toto do
-  def smart_round(k, n) do
-    Float.round(k * 1.0, n)
-  end
-end
-
 require Logger
-paire="AUD_JPY"
-dataset = Oanda.Interface.get_prices("H1", paire, 4999)
+paire="GBP_NZD"
+ut="H1"
+dataset = Oanda.Interface.get_prices(ut, paire, 4999, %{ts_to: 1609502260})
 dataset_augmented = dataset |> Enum.split(250) |> elem(1) |>
 Sansa.TradingUtils.atr |>
 Sansa.TradingUtils.ema(50, :close, :ema_50) |>
@@ -17,12 +12,12 @@ Sansa.TradingUtils.ichimoku |>
 Enum.drop(203) |>
 Enum.map(fn price ->
   Map.put(price, :candle_color, price.close < price.open && :red || :green) |>
-  Map.put(:candle_size, Toto.smart_round((price.close - price.open)/ price.atr, 1)) |>
+  Map.put(:candle_size, Sansa.TradingUtils.smart_round((price.close - price.open)/ price.atr, 1)) |>
   Map.put(:kj_tk, price.kj < price.tk && :up || :down) |>
-  Map.put(:rsi, Toto.smart_round(price.rsi, 1)) |>
-  Map.put(:schaff_tc, Toto.smart_round(price.schaff_tc, 1)) |>
+  Map.put(:rsi, Sansa.TradingUtils.smart_round(price.rsi, 1)) |>
+  Map.put(:schaff_tc, Sansa.TradingUtils.smart_round(price.schaff_tc, 1)) |>
   Map.put(:ema_200_pr_50, price.ema_200 > price.ema_50 && :above || :under) |>
-  Map.put(:price_ema_200, Toto.smart_round(abs((price.close - price.ema_200) / Sansa.TradingUtils.pip_position(paire)), 1))
+  Map.put(:price_ema_200, Sansa.TradingUtils.smart_round(abs((price.close - price.ema_200) / Sansa.TradingUtils.pip_position(paire)), 1))
 end)
 ts = dataset_augmented |> Enum.map(& &1.time)
 
@@ -58,3 +53,4 @@ ts_classified = ts_classified |> Enum.map(fn {k, v} ->
   v
 end) |> Enum.into(%{})
 dataset_final = Enum.map(dataset_augmented, & &1 |> put_in([:outcome], ts_classified[&1.time]))
+File.write("data/dataset_#{paire}_#{ut}.bert", :erlang.term_to_binary(dataset_final))

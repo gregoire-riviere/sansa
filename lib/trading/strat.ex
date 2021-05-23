@@ -108,7 +108,9 @@ defmodule Sansa.Strat do
   end
 
   @random_forest_model %{
-    "AUD_JPY" => "data/random_for_model_aud_jpy_h1.bert"
+    "AUD_JPY" => "data/random_for_model_aud_jpy_h1.bert",
+    "GBP_NZD" => "data/rf_model_gbp_nzd_h1.bert.bert",
+    "EUR_USD" => "data/rf_model_eur_usd_h1.bert.bert",
   }
 
 
