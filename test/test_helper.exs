@@ -38,3 +38,6 @@ prices3 = Oanda.Interface.get_prices("H1", "AUD_NZD", 500) |> Sansa.TradingUtils
 prices3 |> Enum.reverse |> hd
 # |> Sansa.TradingUtils.schaff_tc
 prices2 |> Enum.reverse |> hd
+
+prices = Oanda.Interface.get_prices("H1", "CAD_CHF", 500)
+prices = prices |> Sansa.TradingUtils.atr |> Sansa.PriceAction.compute_otz

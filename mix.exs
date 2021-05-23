@@ -24,7 +24,8 @@ defmodule Sansa.MixProject do
     [
       {:poison, "~> 3.0", override: true},
       {:logger_file_backend, "~> 0.0.10"},
-      {:timex, "~> 3.5"}
+      {:timex, "~> 3.5"},
+      {:random_forest, git: "https://github.com/gregoire-riviere/random_forest_ex", branch: "main", app: false}
     ]
   end
 end

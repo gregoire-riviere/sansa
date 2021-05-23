@@ -13,8 +13,8 @@ defmodule Backtest do
 
   def getting_prices(p, ut \\ "H1", scope \\ :small) do
     Logger.info("Getting prices for #{ut} - #{p}")
-    ts_start = 1598135554
-    final_ts   = 1608679954
+    ts_start = 1452294735
+    final_ts   = 1610147535
     ts_increment = @increment[ut]
     ts_array = Stream.iterate(ts_start, & Enum.min([(&1 + ts_increment), final_ts]))
     |> Enum.take_while(& &1 != final_ts)
@@ -22,11 +22,11 @@ defmodule Backtest do
     prices = Enum.chunk_every(ts_array, 2, 1, :discard) |> Enum.map(fn [a, b] -> [a+1, b] end) |> Enum.map(fn [a, b] -> Oanda.Interface.get_prices(ut, p, 0, %{ts_from: a, ts_to: b}) end) |> List.flatten |> Enum.uniq |> Enum.sort(& &1[:time] <= &2[:time])
     |> Sansa.TradingUtils.atr
     # |> Sansa.TradingUtils.rsi
-    # |> Sansa.TradingUtils.ichimoku
+    |> Sansa.TradingUtils.ichimoku
     # |> Sansa.TradingUtils.macd
     # |> Sansa.TradingUtils.ema(50, :close, :trend_50)
     # |> Sansa.TradingUtils.ema(100, :close, :long_trend_100)
-    |> Sansa.TradingUtils.schaff_tc()
+    # |> Sansa.TradingUtils.schaff_tc()
     |> Sansa.TradingUtils.ema(200, :close, :long_trend_200)
     # |> Sansa.TradingUtils.bol
     # |> Sansa.TradingUtils.ema(9, :close, :ema_9)
@@ -45,12 +45,12 @@ defmodule Backtest do
   end
 
   def scan_backtest(paire) do
-    rrp = [1.5, 2]#[1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2, 2.25, 2.5]#, 3, 3.5, 4]
-    strat = #[{:ema_cross, :ema_9, :ema_20, :trend_100}, :ema_cross, {:ema_cross, :ema_20, :trend_50, :long_trend_200}]
-    #[:bol_strat, :macd_strat, :ss_ema, :ema_cross, :ich_cross]
-    [:schaff]
+    rrp = [1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2, 2.25, 2.5]#, 3, 3.5, 4]
+    strat = [{:ema_cross, :ema_9, :ema_20, :trend_100}, :ema_cross, {:ema_cross, :ema_20, :trend_50, :long_trend_200},
+    :bol_strat, :macd_strat, :ss_ema, :ema_cross, :ich_cross]
+    # [:ich_cross_alti]
     stop = [:regular_atr, :tight_atr, :very_tight, :large_atr, :very_large_atr]
-    ut_list = ["M15"]
+    ut_list = ["H1"]
     scanning = for x <- rrp, y <- strat, z <- stop, do: [x, y, z]
     results =  Enum.map(ut_list, fn u ->
       cache = getting_prices(paire, u, :full)
@@ -61,17 +61,17 @@ defmodule Backtest do
 
     File.write!("data/backtest_scan_#{paire}.json", Poison.encode!(results))
 
-    # report = Enum.map(ut_list, fn u->
-    #   ":tada: --- ut : #{u} ---\n" <> (results
-    #   |> Enum.filter(& &1.ut == u)
-    #   |> Enum.sort(& &1.gain >= &2.gain)
-    #   # |> Enum.uniq_by(& &1.position_strat)
-    #   |> Enum.take(3)
-    #   |> Enum.map(fn st ->
-    #     "#{st.position_strat} with a win rate of #{st.win_rate}% and a gain of #{st.gain} % on #{st.nb_trades} trades (rrp : #{st.rrp}, stop: #{st.stop_strat} -- %/trades : #{(st.gain/st.nb_trades) |> Float.round(2)}"
-    #   end) |> Enum.join("\n"))
-    # end) |> Enum.join("\n\n")
-    # Slack.Communcation.send_message("#backtest", "Backtest of #{paire} is over. Time for results!", %{attachments: report})
+    report = Enum.map(ut_list, fn u->
+      ":tada: --- ut : #{u} ---\n" <> (results
+      |> Enum.filter(& &1.ut == u)
+      |> Enum.sort(& &1.gain >= &2.gain)
+      # |> Enum.uniq_by(& &1.position_strat)
+      |> Enum.take(3)
+      |> Enum.map(fn st ->
+        "#{st.position_strat} with a win rate of #{st.win_rate}% and a gain of #{st.gain} % on #{st.nb_trades} trades (rrp : #{st.rrp}, stop: #{st.stop_strat} -- %/trades : #{(st.gain/st.nb_trades) |> Float.round(2)}"
+      end) |> Enum.join("\n"))
+    end) |> Enum.join("\n\n")
+    Slack.Communcation.send_message("#backtest", "Backtest of #{paire} is over. Time for results!", %{attachments: report})
   end
 
   def analyse_over_pairs() do
@@ -456,6 +456,44 @@ defmodule Backtest do
         }
       last_price.close < last_price.ssa && last_price.close < last_price.ssb &&
       price_before.tk > price_before.kj && last_price.tk < last_price.kj ->
+        sl = stop_placement(stop_strat, new_prices, :sell)
+        tp = last_price.close - rrp * abs(last_price.close - sl)
+        Logger.warn("New short position")
+        %{
+          state: :short_position,
+          trading_info: %{sl: sl, tp: tp , open: last_price},
+          capital: report.capital,
+          result: report.result
+        }
+      true ->
+        report
+    end
+  end
+
+  def evaluate_strategy(:ich_cross_alti, report, new_prices, rrp, stop_strat) do
+    last_price = new_prices |> Enum.reverse |> hd
+    price_before = new_prices |> Enum.reverse |> Enum.at(1)
+    ck_price = new_prices |> Enum.reverse |> Enum.at(26) |> get_in([:close])
+    tk_mean = new_prices |> Enum.reverse |> Enum.take(5) |> Enum.map(fn v -> (v.tk)/5 end) |> Enum.sum
+
+    cond do
+      last_price.close > last_price.ssa && last_price.close > last_price.ssb &&
+      # last_price.close > last_price.long_trend_200 &&
+      price_before.close <= price_before.kj && last_price.close > last_price.kj &&
+      last_price.tk >= tk_mean && ck_price <= last_price.close ->
+        sl = stop_placement(stop_strat, new_prices, :buy)
+        tp = last_price.close + rrp * abs(last_price.close - sl)
+        Logger.warn("New long position")
+        %{
+          state: :long_position,
+          trading_info: %{sl: sl, tp: tp , open: last_price},
+          capital: report.capital,
+          result: report.result
+        }
+      last_price.close < last_price.ssa && last_price.close < last_price.ssb &&
+      # last_price.close < last_price.long_trend_200 &&
+      price_before.close >= price_before.kj && last_price.close < last_price.kj &&
+      last_price.tk <= tk_mean && ck_price >= last_price.close ->
         sl = stop_placement(stop_strat, new_prices, :sell)
         tp = last_price.close - rrp * abs(last_price.close - sl)
         Logger.warn("New short position")
